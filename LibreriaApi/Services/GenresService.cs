@@ -28,7 +28,7 @@ namespace LibreriaApi.Services {
 
 			if( reader.HasRows ) {
 				while( await reader.ReadAsync() ) {
-					genres.Add( await GetResponse( reader ) );
+					genres.Add( await GetResponseByReader( reader ) );
 				}
 			}
 			return genres;
@@ -44,7 +44,7 @@ namespace LibreriaApi.Services {
 
 			if( reader.HasRows ) {
 				while( await reader.ReadAsync() ) {
-					genres.Add( await GetResponse( reader ) );
+					genres.Add( await GetResponseByReader( reader ) );
 				}
 			}
 
@@ -53,52 +53,68 @@ namespace LibreriaApi.Services {
 
 		public async Task<GenreResponse?> FindByIdAsync( int genreId ) {
 			using var command = new MySqlCommand( SELECT_BY_ID_COMMAND, _connection );
-			command.Parameters.AddWithValue( "@genreId", genreId );
+			AddGenreIdParam( command, genreId );
 
 			using var reader = await command.ExecuteReaderAsync();
 
 			if( !reader.HasRows ) return null;
 
 			await reader.ReadAsync();
-			return await GetResponse( reader );
+			return await GetResponseByReader( reader );
 		}
 
-		public async Task<int> CreateAsync( GenreRequest request ) {
+		public async Task<GenreResponse> CreateAsync( GenreRequest request ) {
 			using var command = new MySqlCommand( INSERT_COMMAND, _connection );
-			command.Parameters.AddWithValue( "@name", request.Name );
-			command.Parameters.AddWithValue( "@imageUrl", request.ImageUrl ?? string.Empty );
+			AddRequestParams( command, request );
 
 			await command.ExecuteNonQueryAsync();
 
-			return ( int )command.LastInsertedId;
+			return GetResponseByRequest( ( int )command.LastInsertedId, request );
 		}
 
-		public async Task<int?> UpdateAsync( GenreRequest request, int genreId ) {
+		public async Task<GenreResponse?> UpdateAsync( GenreRequest request, int genreId ) {
 			using var command = new MySqlCommand( UPDATE_COMMAND, _connection );
-			command.Parameters.AddWithValue( "@name", request.Name );
-			command.Parameters.AddWithValue( "@imageUrl", request.ImageUrl );
-			command.Parameters.AddWithValue( "@genreId", genreId );
+			AddRequestParams( command, request );
+			AddGenreIdParam( command, genreId );
 
 			if( await command.ExecuteNonQueryAsync() < 1 ) return null;
 
-			return ( int )command.LastInsertedId;
+			return GetResponseByRequest( ( int )command.LastInsertedId, request );
 		}
 
 		public async Task<int?> DeleteAsync( int genreId ) {
 			using var command = new MySqlCommand( DELETE_COMMAND, _connection );
-			command.Parameters.AddWithValue( "@genreId", genreId );
+			AddGenreIdParam( command, genreId );
 
 			if( await command.ExecuteNonQueryAsync() < 1 ) return null;
 
 			return ( int )command.LastInsertedId;
 		}
 
-		private static async Task<GenreResponse> GetResponse( DbDataReader reader ) {
+
+		private static async Task<GenreResponse> GetResponseByReader( DbDataReader reader ) {
 			return new GenreResponse(
 				id: await reader.GetFieldValueAsync<int>( "id_genero" ),
 				name: await reader.GetFieldValueAsync<string>( "genero" ),
 				imageUrl: await reader.GetFieldValueAsync<string>( "imagen_url" )
 			);
+		}
+
+		private static GenreResponse GetResponseByRequest( int id, GenreRequest request ) {
+			return new GenreResponse(
+				id: id,
+				name: request.Name!,
+				imageUrl: request.ImageUrl ?? ""
+				);
+		}
+
+		private static void AddRequestParams( MySqlCommand command, GenreRequest request ) {
+			command.Parameters.AddWithValue( "@name", request.Name );
+			command.Parameters.AddWithValue( "@imageUrl", request.ImageUrl ?? string.Empty );
+		}
+
+		private static void AddGenreIdParam( MySqlCommand command, int genreId ) {
+			command.Parameters.AddWithValue( "@genreId", genreId );
 		}
 	}
 }
