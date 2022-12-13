@@ -2,12 +2,16 @@ using LibreriaApi.Interfaces;
 using LibreriaApi.Services;
 using MySql.Data.MySqlClient;
 
+
 var builder = WebApplication.CreateBuilder( args );
 // Config
 var allowCorsOrigin = "_localNetworkIntern";
 
+var allowCorsOrigin = "_localNetworkIntern";
+
 // Add services to the container.
 builder.Services.AddControllers();
+
 // TODO: Corregir Cors para producción
 builder.Services.AddCors( options => {
 	options.AddPolicy( name: allowCorsOrigin, builder => {
@@ -16,6 +20,7 @@ builder.Services.AddCors( options => {
 		builder.WithHeaders( "*" );
 	} );
 } );
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -28,7 +33,9 @@ builder.Services.AddTransient( _ => {
 	connection.Open();
 	return connection;
 } );
+
 builder.Services.AddScoped<IGenresService, GenresService>();
+builder.Services.AddScoped<IBooksService, BooksService>();
 
 var app = builder.Build();
 
