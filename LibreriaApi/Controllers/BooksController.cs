@@ -7,17 +7,17 @@ using System.Net;
 namespace LibreriaApi.Controllers {
 	[Route( "api/[controller]" )]
 	[ApiController]
-	public class GenresController: ControllerBase {
-		private readonly IGenresService genresService;
+	public class BooksController: ControllerBase {
+		private readonly IBooksService booksService;
 
-		public GenresController( IGenresService genresService ) {
-			this.genresService = genresService;
+		public BooksController( IBooksService booksService ) {
+			this.booksService = booksService;
 		}
 
 		[HttpGet]
 		public async Task<ActionResult> GetAll() {
 			try {
-				return Ok( await genresService.ReadAsync() );
+				return Ok( await booksService.ReadAsync() );
 			} catch( Exception ex ) {
 				return StatusCode( StatusCodes.Status500InternalServerError, new { message = ex.Message } );
 			}
@@ -26,38 +26,38 @@ namespace LibreriaApi.Controllers {
 		[HttpGet( "{id:int}" )]
 		public async Task<ActionResult> GetById( int id ) {
 			try {
-				var genre = await genresService.FindByIdAsync( id );
+				var book = await booksService.FindByIdAsync( id );
 
-				if( genre is null ) return NotFound();
+				if( book is null ) return NotFound();
 
-				return Ok( genre );
+				return Ok( book );
 			} catch( Exception ex ) {
 				return StatusCode( StatusCodes.Status500InternalServerError, new { message = ex.Message } );
 			}
 		}
 
 		[HttpPost]
-		public async Task<ActionResult> Create( GenreRequest request ) {
+		public async Task<ActionResult> Create( BookRequest request ) {
 			try {
-				var genreId = await genresService.CreateAsync( request );
-				var genre = await genresService.FindByIdAsync( genreId );
+				var bookId = await booksService.CreateAsync( request );
+				var book = await booksService.FindByIdAsync( bookId );
 
-				return Ok( genre );
+				return Ok( book );
 			} catch( Exception ex ) {
 				return StatusCode( StatusCodes.Status500InternalServerError, new { message = ex.Message } );
 			}
 		}
 
 		[HttpPut( "{id:int}" )]
-		public async Task<ActionResult> Update( int id, GenreRequest request ) {
+		public async Task<ActionResult> Update( int id, BookRequest request ) {
 			try {
-				var genreId = await genresService.UpdateAsync( request, id );
+				var bookId = await booksService.UpdateAsync( request, id );
 
-				if( genreId is null ) return NotFound();
+				if(bookId is null ) return NotFound();
 
-				var genre = await genresService.FindByIdAsync( ( int )genreId );
+				var book = await booksService.FindByIdAsync( ( int )bookId);
 
-				return Ok( genre );
+				return Ok( book );
 			} catch( Exception ex ) {
 				return StatusCode( StatusCodes.Status500InternalServerError, new { message = ex.Message } );
 			}
@@ -66,9 +66,9 @@ namespace LibreriaApi.Controllers {
 		[HttpDelete( "{id:int}" )]
 		public async Task<ActionResult> Delete( int id ) {
 			try {
-				var genreId = await genresService.DeleteAsync( id );
+				var bookId = await booksService.DeleteAsync( id );
 
-				if( genreId is null ) return NotFound();
+				if(bookId is null ) return NotFound();
 
 				return Ok();
 			} catch( Exception ex ) {
