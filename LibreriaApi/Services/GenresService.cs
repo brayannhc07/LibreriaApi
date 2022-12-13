@@ -79,7 +79,7 @@ namespace LibreriaApi.Services {
 
 			if( await command.ExecuteNonQueryAsync() < 1 ) return null;
 
-			return GetResponseByRequest( ( int )command.LastInsertedId, request );
+			return GetResponseByRequest( genreId, request );
 		}
 
 		public async Task<int?> DeleteAsync( int genreId ) {
