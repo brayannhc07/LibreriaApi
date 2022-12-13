@@ -1,13 +1,21 @@
 using LibreriaApi.Interfaces;
 using LibreriaApi.Services;
 using MySql.Data.MySqlClient;
-using System.Configuration;
 
 var builder = WebApplication.CreateBuilder( args );
+// Config
+var allowCorsOrigin = "_localNetworkIntern";
 
 // Add services to the container.
-
 builder.Services.AddControllers();
+// TODO: Corregir Cors para producción
+builder.Services.AddCors( options => {
+	options.AddPolicy( name: allowCorsOrigin, builder => {
+		builder.WithOrigins( "*" );
+		builder.WithMethods( "*" );
+		builder.WithHeaders( "*" );
+	} );
+} );
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -33,6 +41,9 @@ if( app.Environment.IsDevelopment() ) {
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
+
+// Permitir acceso de origen 
+app.UseCors( allowCorsOrigin );
 
 app.MapControllers();
 

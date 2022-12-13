@@ -39,8 +39,7 @@ namespace LibreriaApi.Controllers {
 		[HttpPost]
 		public async Task<ActionResult> Create( GenreRequest request ) {
 			try {
-				var genreId = await genresService.CreateAsync( request );
-				var genre = await genresService.FindByIdAsync( genreId );
+				var genre = await genresService.CreateAsync( request );
 
 				return Ok( genre );
 			} catch( Exception ex ) {
@@ -51,11 +50,9 @@ namespace LibreriaApi.Controllers {
 		[HttpPut( "{id:int}" )]
 		public async Task<ActionResult> Update( int id, GenreRequest request ) {
 			try {
-				var genreId = await genresService.UpdateAsync( request, id );
+				var genre = await genresService.UpdateAsync( request, id );
 
-				if( genreId is null ) return NotFound();
-
-				var genre = await genresService.FindByIdAsync( ( int )genreId );
+				if( genre is null ) return NotFound();
 
 				return Ok( genre );
 			} catch( Exception ex ) {
