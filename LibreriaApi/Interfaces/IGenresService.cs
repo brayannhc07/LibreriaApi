@@ -36,8 +36,8 @@ namespace LibreriaApi.Interfaces {
 		/// Intenta eliminar un género existente de forma asíncrona.
 		/// </summary>
 		/// <param name="genreId">Id del género que se quiere eliminar.</param>
-		/// <returns>Devuelve un <see cref="Task"/> que resuelve el id del género eliminado, sino se eliminó devuelve null.</returns>
-		Task<int?> DeleteAsync( int genreId );
+		/// <returns>Devuelve un <see cref="Task"/> que resuelve los datos del género eliminado, sino se eliminó devuelve null.</returns>
+		Task<GenreResponse?> DeleteAsync( int genreId );
 
 	}
 }

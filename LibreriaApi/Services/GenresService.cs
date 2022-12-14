@@ -1,5 +1,6 @@
 ﻿using LibreriaApi.Interfaces;
 using LibreriaApi.Models;
+using Microsoft.AspNetCore.Mvc.Formatters;
 using MySql.Data.MySqlClient;
 using System.Data;
 using System.Data.Common;
@@ -73,22 +74,34 @@ namespace LibreriaApi.Services {
 		}
 
 		public async Task<GenreResponse?> UpdateAsync( GenreRequest request, int genreId ) {
+
+			var genre = await FindByIdAsync( genreId );
+
+			if( genre is null ) return null;
+
 			using var command = new MySqlCommand( UPDATE_COMMAND, _connection );
 			AddRequestParams( command, request );
 			AddGenreIdParam( command, genreId );
 
-			if( await command.ExecuteNonQueryAsync() < 1 ) return null;
+			if( await command.ExecuteNonQueryAsync() < 1 ) 
+				throw new Exception("No se pudo editar el género, intenta más tarde.");
 
 			return GetResponseByRequest( genreId, request );
 		}
 
-		public async Task<int?> DeleteAsync( int genreId ) {
+		public async Task<GenreResponse?> DeleteAsync( int genreId ) {
+
+			var genre = await FindByIdAsync( genreId );
+
+			if( genre is null ) return null;
+
 			using var command = new MySqlCommand( DELETE_COMMAND, _connection );
 			AddGenreIdParam( command, genreId );
 
-			if( await command.ExecuteNonQueryAsync() < 1 ) return null;
+			if( await command.ExecuteNonQueryAsync() < 1 )
+				throw new Exception( "No se pudo elminar el género, intenta más tarde." );
 
-			return ( int )command.LastInsertedId;
+			return genre;
 		}
 
 

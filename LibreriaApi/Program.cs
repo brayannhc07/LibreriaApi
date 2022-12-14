@@ -7,8 +7,6 @@ var builder = WebApplication.CreateBuilder( args );
 // Config
 var allowCorsOrigin = "_localNetworkIntern";
 
-var allowCorsOrigin = "_localNetworkIntern";
-
 // Add services to the container.
 builder.Services.AddControllers();
 
