@@ -33,6 +33,7 @@ builder.Services.AddTransient( _ => {
 } );
 
 builder.Services.AddScoped<IGenresService, GenresService>();
+builder.Services.AddScoped<IMembersService, MembersService>();
 builder.Services.AddScoped<IBooksService, BooksService>();
 
 var app = builder.Build();

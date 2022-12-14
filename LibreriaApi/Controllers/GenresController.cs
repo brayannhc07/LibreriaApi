@@ -18,8 +18,8 @@ namespace LibreriaApi.Controllers {
 		public async Task<ActionResult> GetAll() {
 			Response<IEnumerable<GenreResponse>> response = new();
 			try {
-				var users = await genresService.ReadAsync();
-				return Ok( response.Commit( "", users ) );
+				var genres = await genresService.ReadAsync();
+				return Ok( response.Commit( "", genres ) );
 			} catch( Exception ex ) {
 				return StatusCode(
 					StatusCodes.Status500InternalServerError,
@@ -85,7 +85,7 @@ namespace LibreriaApi.Controllers {
 
 				if( genre is null ) return NotFound( response.Defeat( "Género no encontrado." ) );
 
-				return Ok( response.Commit( "Género elimindo correctamente.", genre ) );
+				return Ok( response.Commit( "Género eliminado correctamente.", genre ) );
 			} catch( Exception ex ) {
 				return StatusCode(
 					StatusCodes.Status500InternalServerError,
