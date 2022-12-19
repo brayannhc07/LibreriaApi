@@ -1,13 +1,11 @@
 ﻿using LibreriaApi.Interfaces;
 using LibreriaApi.Models;
 using Microsoft.AspNetCore.Mvc;
-using Org.BouncyCastle.Asn1.Ocsp;
-using System.Net;
 
 namespace LibreriaApi.Controllers {
 	[Route( "api/[controller]" )]
 	[ApiController]
-	public class GenresController: ControllerBase {
+	public class GenresController: LibraryControllerBase {
 		private readonly IGenresService genresService;
 
 		public GenresController( IGenresService genresService ) {
@@ -21,10 +19,7 @@ namespace LibreriaApi.Controllers {
 				var genres = await genresService.ReadAsync();
 				return Ok( response.Commit( "", genres ) );
 			} catch( Exception ex ) {
-				return StatusCode(
-					StatusCodes.Status500InternalServerError,
-					response.Defeat( ex.Message )
-				);
+				return GetServerErrorStatus( response, ex );
 			}
 		}
 
@@ -34,14 +29,11 @@ namespace LibreriaApi.Controllers {
 			try {
 				var genre = await genresService.FindByIdAsync( id );
 
-				if( genre is null ) return NotFound( response.Defeat( "Género no encontrado." ) );
+				if( genre is null ) return GetNotFoundStatus( response );
 
 				return Ok( response.Commit( "", genre ) );
 			} catch( Exception ex ) {
-				return StatusCode(
-					StatusCodes.Status500InternalServerError,
-					response.Defeat( ex.Message )
-				);
+				return GetServerErrorStatus( response, ex );
 			}
 		}
 
@@ -53,10 +45,7 @@ namespace LibreriaApi.Controllers {
 
 				return Ok( response.Commit( "Género creado correctamente.", genre ) );
 			} catch( Exception ex ) {
-				return StatusCode(
-					StatusCodes.Status500InternalServerError,
-					response.Defeat( ex.Message )
-				);
+				return GetServerErrorStatus( response, ex );
 			}
 		}
 
@@ -66,14 +55,11 @@ namespace LibreriaApi.Controllers {
 			try {
 				var genre = await genresService.UpdateAsync( request, id );
 
-				if( genre is null ) return NotFound( response.Defeat( "Género no encontrado." ) );
+				if( genre is null ) return GetNotFoundStatus( response );
 
 				return Ok( response.Commit( "Género actualizado correctamente.", genre ) );
 			} catch( Exception ex ) {
-				return StatusCode(
-					StatusCodes.Status500InternalServerError,
-					response.Defeat( ex.Message )
-				);
+				return GetServerErrorStatus( response, ex );
 			}
 		}
 
@@ -83,16 +69,16 @@ namespace LibreriaApi.Controllers {
 			try {
 				var genre = await genresService.DeleteAsync( id );
 
-				if( genre is null ) return NotFound( response.Defeat( "Género no encontrado." ) );
+				if( genre is null ) return GetNotFoundStatus( response );
 
 				return Ok( response.Commit( "Género eliminado correctamente.", genre ) );
 			} catch( Exception ex ) {
-				return StatusCode(
-					StatusCodes.Status500InternalServerError,
-					response.Defeat( ex.Message )
-				);
+				return GetServerErrorStatus( response, ex );
 			}
 		}
 
+		private ActionResult GetNotFoundStatus<T>( Response<T> response ) {
+			return NotFound( response.Defeat( "Género no encontrado." ) );
+		}
 	}
 }

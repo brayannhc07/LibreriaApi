@@ -1,13 +1,11 @@
 ﻿using LibreriaApi.Interfaces;
 using LibreriaApi.Models;
 using Microsoft.AspNetCore.Mvc;
-using Org.BouncyCastle.Asn1.Ocsp;
-using System.Net;
 
 namespace LibreriaApi.Controllers {
 	[Route( "api/[controller]" )]
 	[ApiController]
-	public class BooksController: ControllerBase {
+	public class BooksController: LibraryControllerBase {
 		private readonly IBooksService booksService;
 
 		public BooksController( IBooksService booksService ) {
@@ -16,65 +14,71 @@ namespace LibreriaApi.Controllers {
 
 		[HttpGet]
 		public async Task<ActionResult> GetAll() {
+			Response<IEnumerable<BookResponse>> response = new();
 			try {
-				return Ok( await booksService.ReadAsync() );
+				var books = await booksService.ReadAsync();
+				return Ok( response.Commit( "", books ) );
 			} catch( Exception ex ) {
-				return StatusCode( StatusCodes.Status500InternalServerError, new { message = ex.Message } );
+				return GetServerErrorStatus( response, ex );
 			}
 		}
 
 		[HttpGet( "{id:int}" )]
 		public async Task<ActionResult> GetById( int id ) {
+			Response<BookResponse> response = new();
 			try {
 				var book = await booksService.FindByIdAsync( id );
 
-				if( book is null ) return NotFound();
+				if( book is null ) return GetNotFoundStatus( response );
 
-				return Ok( book );
+				return Ok( response.Commit( "", book ) );
 			} catch( Exception ex ) {
-				return StatusCode( StatusCodes.Status500InternalServerError, new { message = ex.Message } );
+				return GetServerErrorStatus( response, ex );
 			}
 		}
 
 		[HttpPost]
 		public async Task<ActionResult> Create( BookRequest request ) {
+			Response<BookResponse> response = new();
 			try {
-				var bookId = await booksService.CreateAsync( request );
-				var book = await booksService.FindByIdAsync( bookId );
+				var book = await booksService.CreateAsync( request );
 
-				return Ok( book );
+				return Ok( response.Commit( "Libro registrado correctamente.", book ) );
 			} catch( Exception ex ) {
-				return StatusCode( StatusCodes.Status500InternalServerError, new { message = ex.Message } );
+				return GetServerErrorStatus( response, ex );
 			}
 		}
 
 		[HttpPut( "{id:int}" )]
 		public async Task<ActionResult> Update( int id, BookRequest request ) {
+			Response<BookResponse> response = new();
 			try {
-				var bookId = await booksService.UpdateAsync( request, id );
+				var book = await booksService.UpdateAsync( request, id );
 
-				if(bookId is null ) return NotFound();
+				if( book is null ) return GetNotFoundStatus( response );
 
-				var book = await booksService.FindByIdAsync( ( int )bookId);
-
-				return Ok( book );
+				return Ok( response.Commit( "Libro actualizado correctamente.", book ) );
 			} catch( Exception ex ) {
-				return StatusCode( StatusCodes.Status500InternalServerError, new { message = ex.Message } );
+				return GetServerErrorStatus( response, ex );
 			}
 		}
 
 		[HttpDelete( "{id:int}" )]
 		public async Task<ActionResult> Delete( int id ) {
+			Response<BookResponse> response = new();
 			try {
-				var bookId = await booksService.DeleteAsync( id );
+				var book = await booksService.DeleteAsync( id );
 
-				if(bookId is null ) return NotFound();
+				if( book is null ) return GetNotFoundStatus( response );
 
-				return Ok();
+				return Ok( response.Commit( "Libro eliminado correctamente.", book ) );
 			} catch( Exception ex ) {
-				return StatusCode( StatusCodes.Status500InternalServerError, new { message = ex.Message } );
+				return GetServerErrorStatus( response, ex );
 			}
 		}
 
+		private ActionResult GetNotFoundStatus<T>( Response<T> response ) {
+			return NotFound( response.Defeat( "Libro no encontrado." ) );
+		}
 	}
 }

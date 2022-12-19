@@ -9,12 +9,11 @@ namespace LibreriaApi.Services {
 		private readonly MySqlConnection _connection;
 
 		private const string SELECT_COMMAND = "SELECT * FROM libros ORDER BY titulo DESC";
-		private const string INSERT_COMMAND = "INSERT INTO libros(isbn , titulo, autor , sinopsis, editorial , numero_pag, imagen_url, status) VALUES( @isbn , @titulo,@autor , @sinopsis, @editorial , @numero_pag , @imagen_url, @status)";
-		private const string UPDATE_COMMAND = "UPDATE libros SET isbn = @isbn , titulo = @titulo, autor = @autor, sinopis = @sinopsis, editorial = @editorial, numPaginas = @numPaginas, imagen_url = @imagen_url , status =@status WHERE id_libro = @libroId";
-		private const string DELETE_COMMAND = "DELETE FROM libros WHERE id_libro = @libroId";
+		private const string INSERT_COMMAND = "INSERT INTO libros(isbn , titulo, autor , sinopsis, editorial , numero_pag, imagen_url) VALUES(@isbn ,@title, @author, @synopsis, @editorial, @pages, @imageUrl)";
+		private const string UPDATE_COMMAND = "UPDATE libros SET isbn = @isbn , titulo = @title, autor = @author, sinopsis = @synopsis, editorial = @editorial, numero_pag = @pages, imagen_url = @imageUrl WHERE id_libro = @bookId";
+		private const string DELETE_COMMAND = "DELETE FROM libros WHERE id_libro = @bookId";
 
-		private const string SELECT_BY_ID_COMMAND = "SELECT * FROM libros WHERE id_libro = @libroId";
-		private const string SELECT_BY_BOOK_ID_COMMAND = "SELECT g.*, lg.id_libro FROM libro_generos lg, generos g WHERE lg.id_genero = g.id_genero AND id_libro = @bookId ORDER BY genero DESC";
+		private const string SELECT_BY_ID_COMMAND = "SELECT * FROM libros WHERE id_libro = @bookId";
 
 		public BooksService( MySqlConnection connection ) {
 			_connection = connection;
@@ -28,93 +27,101 @@ namespace LibreriaApi.Services {
 
 			if( reader.HasRows ) {
 				while( await reader.ReadAsync() ) {
-					books.Add( await GetResponse( reader ) );
+					books.Add( await GetResponseFromReader( reader ) );
 				}
 			}
 			return books;
 		}
 
-		public async Task<IEnumerable<BookResponse>> ReadByBookIdAsync( int bookId ) {
-			using var command = new MySqlCommand( SELECT_BY_BOOK_ID_COMMAND, _connection );
-			command.Parameters.AddWithValue( "@bookId", bookId );
-
-			using var reader = await command.ExecuteReaderAsync();
-
-			var book = new List<BookResponse>();
-
-			if( reader.HasRows ) {
-				while( await reader.ReadAsync() ) {
-					book.Add( await GetResponse( reader ) );
-				}
-			}
-
-			return book;
-		}
-
 		public async Task<BookResponse?> FindByIdAsync( int bookId ) {
 			using var command = new MySqlCommand( SELECT_BY_ID_COMMAND, _connection );
-			command.Parameters.AddWithValue( "@bookId", bookId );
+			AddIdParam( command, bookId );
 
 			using var reader = await command.ExecuteReaderAsync();
 
 			if( !reader.HasRows ) return null;
 
 			await reader.ReadAsync();
-			return await GetResponse( reader );
+			return await GetResponseFromReader( reader );
 		}
 
-		public async Task<int> CreateAsync( BookRequest request ) {
+		public async Task<BookResponse> CreateAsync( BookRequest request ) {
 			using var command = new MySqlCommand( INSERT_COMMAND, _connection );
-            command.Parameters.AddWithValue("@isbn", request.Isbn);
-            command.Parameters.AddWithValue( "@titulo", request.Titulo );
-            command.Parameters.AddWithValue("@autor", request.Autor);
-            command.Parameters.AddWithValue("@sinopsis", request.Sinopsis);
-            command.Parameters.AddWithValue("@editorial", request.Editorial);
-            command.Parameters.AddWithValue("@numPaginas", request.Numero_pag);
-            command.Parameters.AddWithValue("@imageUrl", request.ImageUrl ?? string.Empty);
-            command.Parameters.AddWithValue("@status", request.Status);
-            await command.ExecuteNonQueryAsync();
+			AddRequestParams( command, request );
 
-			return ( int )command.LastInsertedId;
+			if( await command.ExecuteNonQueryAsync() < 1 )
+				throw new Exception( "No se pudo registrar al socio, intenta más tarde." );
+
+			return GetResponseFromRequest( ( int )command.LastInsertedId, request );
 		}
 
-		public async Task<int?> UpdateAsync( BookRequest request, int bookId ) {
+		public async Task<BookResponse?> UpdateAsync( BookRequest request, int bookId ) {
+			var book = await FindByIdAsync( bookId );
+			if( book is null ) return null;
+
 			using var command = new MySqlCommand( UPDATE_COMMAND, _connection );
-            command.Parameters.AddWithValue("@isbn", request.Isbn);
-            command.Parameters.AddWithValue("@titulo", request.Titulo);
-            command.Parameters.AddWithValue("@autor", request.Autor);
-            command.Parameters.AddWithValue("@sinopsis", request.Sinopsis);
-            command.Parameters.AddWithValue("@editorial", request.Editorial);
-            command.Parameters.AddWithValue("@numPaginas", request.Numero_pag);
-            command.Parameters.AddWithValue("@imageUrl", request.ImageUrl ?? string.Empty);
-            command.Parameters.AddWithValue("@status", request.Status);
+			AddRequestParams( command, request );
+			AddIdParam( command, bookId );
 
-            if ( await command.ExecuteNonQueryAsync() < 1 ) return null;
+			if( await command.ExecuteNonQueryAsync() < 1 )
+				throw new Exception( "No se pudo editar el libro, intenta más tarde." );
 
-			return ( int )command.LastInsertedId;
+			return GetResponseFromRequest( bookId, request, book.Available );
 		}
 
-		public async Task<int?> DeleteAsync( int bookId ) {
+		public async Task<BookResponse?> DeleteAsync( int bookId ) {
+			var book = await FindByIdAsync( bookId );
+			if( book is null ) return null;
+
 			using var command = new MySqlCommand( DELETE_COMMAND, _connection );
-			command.Parameters.AddWithValue( "@bookId", bookId );
+			AddIdParam( command, bookId );
 
-			if( await command.ExecuteNonQueryAsync() < 1 ) return null;
+			if( await command.ExecuteNonQueryAsync() < 1 )
+				throw new Exception( "No se pudo eliminar el libro, intenta más tarde." );
 
-			return ( int )command.LastInsertedId;
+			return book;
 		}
 
-		private static async Task<BookResponse> GetResponse( DbDataReader reader ) {
+		private static async Task<BookResponse> GetResponseFromReader( DbDataReader reader ) {
 			return new BookResponse(
 				id: await reader.GetFieldValueAsync<int>( "id_libro" ),
-                isbn: await reader.GetFieldValueAsync<int>("isbn"),
-                titulo: await reader.GetFieldValueAsync<string>( "titulo" ),
-				autor: await reader.GetFieldValueAsync<string>( "autor" ),
-                sinopsis: await reader.GetFieldValueAsync<string>("sinopsis"),
-                editorial: await reader.GetFieldValueAsync<string>("editorial"),
-                numero_pag: await reader.GetFieldValueAsync<int>("numPaginas"),
-                imageUrl: await reader.GetFieldValueAsync<string>("imagen_url"),
-                status: await reader.GetFieldValueAsync<bool>("status")
-            );
+				isbn: int.Parse( await reader.GetFieldValueAsync<string>( "isbn" ) ),
+				title: await reader.GetFieldValueAsync<string>( "titulo" ),
+				author: await reader.GetFieldValueAsync<string>( "autor" ),
+				synopsis: await reader.GetFieldValueAsync<string>( "sinopsis" ),
+				editorial: await reader.GetFieldValueAsync<string>( "editorial" ),
+				pages: await reader.GetFieldValueAsync<int>( "numero_pag" ),
+				imageUrl: await reader.GetFieldValueAsync<string>( "imagen_url" ),
+				available: await reader.GetFieldValueAsync<bool>( "disponible" )
+			);
+		}
+
+		private static BookResponse GetResponseFromRequest( int id, BookRequest request, bool available = true ) {
+			return new BookResponse(
+				id: id,
+				isbn: request.Isbn ?? 0,
+				title: request.Title!,
+				author: request.Author!,
+				synopsis: request.Synopsis!,
+				editorial: request.Editorial!,
+				pages: request.Pages ?? 0,
+				imageUrl: request.ImageUrl ?? string.Empty,
+				available: available
+			);
+		}
+
+		private static void AddRequestParams( MySqlCommand command, BookRequest request ) {
+			command.Parameters.AddWithValue( "@isbn", request.Isbn );
+			command.Parameters.AddWithValue( "@title", request.Title );
+			command.Parameters.AddWithValue( "@author", request.Author );
+			command.Parameters.AddWithValue( "@synopsis", request.Synopsis );
+			command.Parameters.AddWithValue( "@editorial", request.Editorial );
+			command.Parameters.AddWithValue( "@pages", request.Pages );
+			command.Parameters.AddWithValue( "@imageUrl", request.ImageUrl ?? string.Empty );
+		}
+
+		private static void AddIdParam( MySqlCommand command, int bookId ) {
+			command.Parameters.AddWithValue( "@bookId", bookId );
 		}
 	}
 }

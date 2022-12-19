@@ -28,7 +28,7 @@ namespace LibreriaApi.Services {
 
 			if( reader.HasRows ) {
 				while( await reader.ReadAsync() ) {
-					genres.Add( await GetResponseByReader( reader ) );
+					genres.Add( await GetResponseFromReader( reader ) );
 				}
 			}
 			return genres;
@@ -43,22 +43,21 @@ namespace LibreriaApi.Services {
 			if( !reader.HasRows ) return null;
 
 			await reader.ReadAsync();
-			return await GetResponseByReader( reader );
+			return await GetResponseFromReader( reader );
 		}
 
 		public async Task<MemberResponse> CreateAsync( MemberRequest request ) {
 			using var command = new MySqlCommand( INSERT_COMMAND, _connection );
 			AddRequestParams( command, request );
 
-			await command.ExecuteNonQueryAsync();
+			if( await command.ExecuteNonQueryAsync() < 1 )
+				throw new Exception( "No se pudo registrar al socio, intenta más tarde." );
 
-			return GetResponseByRequest( ( int )command.LastInsertedId, request );
+			return GetResponseFromRequest( ( int )command.LastInsertedId, request );
 		}
 
 		public async Task<MemberResponse?> UpdateAsync( MemberRequest request, int memberId ) {
-
 			var member = await FindByIdAsync( memberId );
-
 			if( member is null ) return null;
 
 			using var command = new MySqlCommand( UPDATE_COMMAND, _connection );
@@ -68,26 +67,24 @@ namespace LibreriaApi.Services {
 			if( await command.ExecuteNonQueryAsync() < 1 )
 				throw new Exception( "No se pudo editar el socio, intenta más tarde." );
 
-			return GetResponseByRequest( memberId, request, member.ActiveMembership );
+			return GetResponseFromRequest( memberId, request, member.ActiveMembership );
 		}
 
 		public async Task<MemberResponse?> DeleteAsync( int memberId ) {
-
 			var member = await FindByIdAsync( memberId );
-
 			if( member is null ) return null;
 
 			using var command = new MySqlCommand( DELETE_COMMAND, _connection );
 			AddIdParam( command, memberId );
 
 			if( await command.ExecuteNonQueryAsync() < 1 )
-				throw new Exception( "No se pudo elminar el socio, intenta más tarde." );
+				throw new Exception( "No se pudo eliminar el socio, intenta más tarde." );
 
 			return member;
 		}
 
 
-		private static async Task<MemberResponse> GetResponseByReader( DbDataReader reader ) {
+		private static async Task<MemberResponse> GetResponseFromReader( DbDataReader reader ) {
 			return new MemberResponse(
 				id: await reader.GetFieldValueAsync<int>( "id_socio" ),
 				name: await reader.GetFieldValueAsync<string>( "nombre" ),
@@ -100,7 +97,7 @@ namespace LibreriaApi.Services {
 			);
 		}
 
-		private static MemberResponse GetResponseByRequest( int id, MemberRequest request, bool activeMembership = true ) {
+		private static MemberResponse GetResponseFromRequest( int id, MemberRequest request, bool activeMembership = true ) {
 			return new MemberResponse(
 				id: id,
 				name: request.Name!,

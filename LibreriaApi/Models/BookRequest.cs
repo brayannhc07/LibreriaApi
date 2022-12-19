@@ -2,32 +2,34 @@
 using System.ComponentModel.DataAnnotations;
 
 namespace LibreriaApi.Models {
-	public class BookRequest {
+	public class BookRequest: RequestBase {
 
-        [DisplayName("Isbn")]
-        [Range(0, 9999999999999, ErrorMessage = "El {0} del libro excede el tamaño permitido({1}).")]
-        public int? Isbn { get; set; }
-        [DisplayName( "Titulo" )]
-		[Required( ErrorMessage = "Es necesario indicar el {0} del género." )]
-		[MaxLength( 45, ErrorMessage = "El {0} del libro excede el tamaño permitido({1})." )]
-		public string? Titulo { get; set; }
-        [DisplayName("Autor")]
-        [MaxLength(250, ErrorMessage = "El {0} del libro excede el tamaño permitido({1}).")]
-        public string? Autor { get; set; }
-        [DisplayName("Sinopsis")]
-        [MaxLength(500, ErrorMessage = "El {0} del libro excede el tamaño permitido({1}).")]
-        public string? Sinopsis { get; set; }
-        [DisplayName("Editorial")]
-        [MaxLength(250, ErrorMessage = "El {0} del libro excede el tamaño permitido({1}).")]
-        public string? Editorial { get; set; }
-        [DisplayName("Numero Paginas")]
-        [Range(0, 20000, ErrorMessage = "El {0} del libro excede el tamaño permitido({1}).")]
-        public int? Numero_pag { get; set; }
-        [DisplayName( "Url de la portada" )]
-		[MaxLength( 250, ErrorMessage = "El {0} del libro excede el tamaño permitido({1}).")]
+		[DisplayName( "ISBN" )]
+		[Required( ErrorMessage = REQUIRED_ERROR_MESSAGE )]
+		[Range( 0, int.MaxValue, ErrorMessage = RANGE_ERROR_MESSAGE )]
+		public int? Isbn { get; set; }
+		[DisplayName( "Titulo" )]
+		[Required( ErrorMessage = REQUIRED_ERROR_MESSAGE )]
+		[MaxLength( 35, ErrorMessage = MAX_LENGTH_ERROR_MESSAGE )]
+		public string? Title { get; set; }
+		[DisplayName( "Autor" )]
+		[Required( ErrorMessage = REQUIRED_ERROR_MESSAGE )]
+		[MaxLength( 45, ErrorMessage = MAX_LENGTH_ERROR_MESSAGE )]
+		public string? Author { get; set; }
+		[DisplayName( "Sinopsis" )]
+		[Required( ErrorMessage = REQUIRED_ERROR_MESSAGE )]
+		[MaxLength( 250, ErrorMessage = MAX_LENGTH_ERROR_MESSAGE )]
+		public string? Synopsis { get; set; }
+		[DisplayName( "Editorial" )]
+		[Required( ErrorMessage = REQUIRED_ERROR_MESSAGE )]
+		[MaxLength( 45, ErrorMessage = MAX_LENGTH_ERROR_MESSAGE )]
+		public string? Editorial { get; set; }
+		[DisplayName( "Numero Paginas" )]
+		[Required( ErrorMessage = REQUIRED_ERROR_MESSAGE )]
+		[Range( 1, int.MaxValue, ErrorMessage = RANGE_ERROR_MESSAGE )]
+		public int? Pages { get; set; }
+		[DisplayName( "Url de la portada" )]
+		[MaxLength( 250, ErrorMessage = MAX_LENGTH_ERROR_MESSAGE )]
 		public string? ImageUrl { get; set; }
-        [DisplayName("status")]
-        [Range(typeof(bool),"false","true", ErrorMessage = "El {0} del libro excede el tamaño permitido({1}).")]
-        public bool? Status { get; set; }
-    }
+	}
 }

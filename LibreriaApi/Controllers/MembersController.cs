@@ -1,12 +1,11 @@
 ﻿using LibreriaApi.Interfaces;
 using LibreriaApi.Models;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LibreriaApi.Controllers {
 	[Route( "api/[controller]" )]
 	[ApiController]
-	public class MembersController: ControllerBase {
+	public class MembersController: LibraryControllerBase {
 		private readonly IMembersService membersService;
 
 		public MembersController( IMembersService membersService ) {
@@ -20,10 +19,7 @@ namespace LibreriaApi.Controllers {
 				var members = await membersService.ReadAsync();
 				return Ok( response.Commit( "", members ) );
 			} catch( Exception ex ) {
-				return StatusCode(
-					StatusCodes.Status500InternalServerError,
-					response.Defeat( ex.Message )
-				);
+				return GetServerErrorStatus( response, ex );
 			}
 		}
 
@@ -33,16 +29,14 @@ namespace LibreriaApi.Controllers {
 			try {
 				var member = await membersService.FindByIdAsync( id );
 
-				if( member is null ) return NotFound( response.Defeat( "Socio no encontrado." ) );
+				if( member is null ) return GetNotFoundStatus( response );
 
 				return Ok( response.Commit( "", member ) );
 			} catch( Exception ex ) {
-				return StatusCode(
-					StatusCodes.Status500InternalServerError,
-					response.Defeat( ex.Message )
-				);
+				return GetServerErrorStatus( response, ex );
 			}
 		}
+
 
 		[HttpPost]
 		public async Task<ActionResult> Create( MemberRequest request ) {
@@ -50,12 +44,9 @@ namespace LibreriaApi.Controllers {
 			try {
 				var member = await membersService.CreateAsync( request );
 
-				return Ok( response.Commit( "Socio creado correctamente.", member ) );
+				return Ok( response.Commit( "Socio registrado correctamente.", member ) );
 			} catch( Exception ex ) {
-				return StatusCode(
-					StatusCodes.Status500InternalServerError,
-					response.Defeat( ex.Message )
-				);
+				return GetServerErrorStatus( response, ex );
 			}
 		}
 
@@ -65,14 +56,11 @@ namespace LibreriaApi.Controllers {
 			try {
 				var member = await membersService.UpdateAsync( request, id );
 
-				if( member is null ) return NotFound( response.Defeat( "Socio no encontrado." ) );
+				if( member is null ) return GetNotFoundStatus( response );
 
 				return Ok( response.Commit( "Socio actualizado correctamente.", member ) );
 			} catch( Exception ex ) {
-				return StatusCode(
-					StatusCodes.Status500InternalServerError,
-					response.Defeat( ex.Message )
-				);
+				return GetServerErrorStatus( response, ex );
 			}
 		}
 
@@ -82,15 +70,16 @@ namespace LibreriaApi.Controllers {
 			try {
 				var member = await membersService.DeleteAsync( id );
 
-				if( member is null ) return NotFound( response.Defeat( "Socio no encontrado." ) );
+				if( member is null ) return GetNotFoundStatus( response );
 
-				return Ok( response.Commit( "Socio eliminado correctamente.", member ) );
+				return Ok( response.Commit( "Socio dado de baja correctamente.", member ) );
 			} catch( Exception ex ) {
-				return StatusCode(
-					StatusCodes.Status500InternalServerError,
-					response.Defeat( ex.Message )
-				);
+				return GetServerErrorStatus( response, ex );
 			}
+		}
+
+		private ActionResult GetNotFoundStatus( Response<MemberResponse> response ) {
+			return NotFound( response.Defeat( "Socio no encontrado." ) );
 		}
 	}
 }

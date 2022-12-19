@@ -3,27 +3,27 @@
 	/// Representa un modelo de respuesta para un libro
 	/// </summary>
 	public class BookResponse {
-		public BookResponse(int id, int isbn, string titulo, string autor, string sinopsis, string editorial , int numero_pag, string imageUrl, bool status ) {
+		public BookResponse(int id, int isbn, string title, string author, string synopsis, string editorial , int pages, string imageUrl, bool available ) {
 			Id = id;
-			Titulo = titulo;
+			Title = title;
 			ImageUrl = imageUrl;
-			Autor = autor;
-			Sinopsis = sinopsis;
+			Author = author;
+			Synopsis = synopsis;
 			Editorial = editorial;
-            Numero_pag = numero_pag;
+            Pages = pages;
             Isbn = isbn;
-			Status = status;
+			Available = available;
 		}
 
         public string ImageUrl { get; private set; }
         public int Isbn { get; private set; }
-        public int Numero_pag { get; private set; }
+        public int Pages { get; private set; }
         public int Id { get; private set; }
-        public string Titulo { get; private set; }
-        public string Autor { get; private set; }
-        public string Sinopsis { get; private set; }
+        public string Title { get; private set; }
+        public string Author { get; private set; }
+        public string Synopsis { get; private set; }
         public string Editorial { get; private set; }
-        public bool Status { get; private set; }
+        public bool Available { get; private set; }
 		
 	}
 }

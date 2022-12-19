@@ -1,6 +1,5 @@
 ﻿using LibreriaApi.Interfaces;
 using LibreriaApi.Models;
-using Microsoft.AspNetCore.Mvc.Formatters;
 using MySql.Data.MySqlClient;
 using System.Data;
 using System.Data.Common;
