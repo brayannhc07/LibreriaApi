@@ -6,17 +6,17 @@ namespace LibreriaApi.Controllers {
 	[Route( "api/[controller]" )]
 	[ApiController]
 	public class MembersController: LibraryControllerBase {
-		private readonly IMembersService membersService;
+		private readonly IMembersService _membersService;
 
 		public MembersController( IMembersService membersService ) {
-			this.membersService = membersService;
+			this._membersService = membersService;
 		}
 
 		[HttpGet]
-		public async Task<ActionResult> GetAll() {
+		public async Task<ActionResult<Response<IEnumerable<MemberResponse>>>> GetAll() {
 			Response<IEnumerable<MemberResponse>> response = new();
 			try {
-				var members = await membersService.ReadAsync();
+				var members = await _membersService.ReadAsync();
 				return Ok( response.Commit( "", members ) );
 			} catch( Exception ex ) {
 				return GetServerErrorStatus( response, ex );
@@ -24,10 +24,10 @@ namespace LibreriaApi.Controllers {
 		}
 
 		[HttpGet( "{id:int}" )]
-		public async Task<ActionResult> GetById( int id ) {
+		public async Task<ActionResult<Response<MemberResponse>>> GetById( int id ) {
 			Response<MemberResponse> response = new();
 			try {
-				var member = await membersService.FindByIdAsync( id );
+				var member = await _membersService.FindByIdAsync( id );
 
 				if( member is null ) return GetNotFoundStatus( response );
 
@@ -39,10 +39,10 @@ namespace LibreriaApi.Controllers {
 
 
 		[HttpPost]
-		public async Task<ActionResult> Create( MemberRequest request ) {
+		public async Task<ActionResult<Response<MemberResponse>>> Create( MemberRequest request ) {
 			Response<MemberResponse> response = new();
 			try {
-				var member = await membersService.CreateAsync( request );
+				var member = await _membersService.CreateAsync( request );
 
 				return Ok( response.Commit( "Socio registrado correctamente.", member ) );
 			} catch( Exception ex ) {
@@ -51,10 +51,10 @@ namespace LibreriaApi.Controllers {
 		}
 
 		[HttpPut( "{id:int}" )]
-		public async Task<ActionResult> Update( int id, MemberRequest request ) {
+		public async Task<ActionResult<Response<MemberResponse>>> Update( int id, MemberRequest request ) {
 			Response<MemberResponse> response = new();
 			try {
-				var member = await membersService.UpdateAsync( request, id );
+				var member = await _membersService.UpdateAsync( request, id );
 
 				if( member is null ) return GetNotFoundStatus( response );
 
@@ -65,10 +65,10 @@ namespace LibreriaApi.Controllers {
 		}
 
 		[HttpDelete( "{id:int}" )]
-		public async Task<ActionResult> Delete( int id ) {
+		public async Task<ActionResult<Response<MemberResponse>>> Delete( int id ) {
 			Response<MemberResponse> response = new();
 			try {
-				var member = await membersService.DeleteAsync( id );
+				var member = await _membersService.DeleteAsync( id );
 
 				if( member is null ) return GetNotFoundStatus( response );
 

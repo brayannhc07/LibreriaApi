@@ -6,17 +6,17 @@ namespace LibreriaApi.Controllers {
 	[Route( "api/[controller]" )]
 	[ApiController]
 	public class GenresController: LibraryControllerBase {
-		private readonly IGenresService genresService;
+		private readonly IGenresService _genresService;
 
 		public GenresController( IGenresService genresService ) {
-			this.genresService = genresService;
+			this._genresService = genresService;
 		}
 
 		[HttpGet]
-		public async Task<ActionResult> GetAll() {
+		public async Task<ActionResult<Response<IEnumerable<GenreResponse>>>> GetAll() {
 			Response<IEnumerable<GenreResponse>> response = new();
 			try {
-				var genres = await genresService.ReadAsync();
+				var genres = await _genresService.ReadAsync();
 				return Ok( response.Commit( "", genres ) );
 			} catch( Exception ex ) {
 				return GetServerErrorStatus( response, ex );
@@ -24,10 +24,10 @@ namespace LibreriaApi.Controllers {
 		}
 
 		[HttpGet( "{id:int}" )]
-		public async Task<ActionResult> GetById( int id ) {
+		public async Task<ActionResult<Response<GenreResponse>>> GetById( int id ) {
 			Response<GenreResponse> response = new();
 			try {
-				var genre = await genresService.FindByIdAsync( id );
+				var genre = await _genresService.FindByIdAsync( id );
 
 				if( genre is null ) return GetNotFoundStatus( response );
 
@@ -38,10 +38,10 @@ namespace LibreriaApi.Controllers {
 		}
 
 		[HttpPost]
-		public async Task<ActionResult> Create( GenreRequest request ) {
+		public async Task<ActionResult<Response<GenreResponse>>> Create( GenreRequest request ) {
 			Response<GenreResponse> response = new();
 			try {
-				var genre = await genresService.CreateAsync( request );
+				var genre = await _genresService.CreateAsync( request );
 
 				return Ok( response.Commit( "Género creado correctamente.", genre ) );
 			} catch( Exception ex ) {
@@ -50,10 +50,10 @@ namespace LibreriaApi.Controllers {
 		}
 
 		[HttpPut( "{id:int}" )]
-		public async Task<ActionResult> Update( int id, GenreRequest request ) {
+		public async Task<ActionResult<Response<GenreResponse>>> Update( int id, GenreRequest request ) {
 			Response<GenreResponse> response = new();
 			try {
-				var genre = await genresService.UpdateAsync( request, id );
+				var genre = await _genresService.UpdateAsync( request, id );
 
 				if( genre is null ) return GetNotFoundStatus( response );
 
@@ -64,10 +64,10 @@ namespace LibreriaApi.Controllers {
 		}
 
 		[HttpDelete( "{id:int}" )]
-		public async Task<ActionResult> Delete( int id ) {
+		public async Task<ActionResult<Response<GenreResponse>>> Delete( int id ) {
 			Response<GenreResponse> response = new();
 			try {
-				var genre = await genresService.DeleteAsync( id );
+				var genre = await _genresService.DeleteAsync( id );
 
 				if( genre is null ) return GetNotFoundStatus( response );
 
