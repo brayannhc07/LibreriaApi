@@ -3,7 +3,6 @@ using LibreriaApi.Models;
 using MySql.Data.MySqlClient;
 using System.Data;
 using System.Data.Common;
-using System.Xml.Linq;
 
 namespace LibreriaApi.Services {
 	public class MembersService: IMembersService {
@@ -88,12 +87,12 @@ namespace LibreriaApi.Services {
 			return new MemberResponse(
 				id: await reader.GetFieldValueAsync<int>( "id_socio" ),
 				name: await reader.GetFieldValueAsync<string>( "nombre" ),
-				address: await reader.GetFieldValueAsync<string>( "direccion" ),
+				address: await reader.GetFieldValueAsync<string?>( "direccion" ),
 				phoneNumber: await reader.GetFieldValueAsync<string>( "telefono" ),
-				email: await reader.GetFieldValueAsync<string>( "correo" ),
-				birth: await reader.GetFieldValueAsync<DateTime>( "fecha_nacimiento" ),
+				email: await reader.GetFieldValueAsync<string?>( "correo" ),
+				birthday: await reader.GetFieldValueAsync<DateTime?>( "fecha_nacimiento" ),
 				activeMembership: await reader.GetFieldValueAsync<bool>( "estado_membresia" ),
-				imageUrl: await reader.GetFieldValueAsync<string>( "imagen_url" )
+				imageUrl: await reader.GetFieldValueAsync<string>( "imagen_url" ) ?? string.Empty
 			);
 		}
 
@@ -104,7 +103,7 @@ namespace LibreriaApi.Services {
 				address: request.Address ?? "",
 				phoneNumber: request.PhoneNumber!,
 				email: request.Email ?? "",
-				birth: request.Birthday,
+				birthday: request.Birthday,
 				activeMembership: activeMembership,
 				imageUrl: request.ImageUrl ?? ""
 			);
@@ -115,7 +114,7 @@ namespace LibreriaApi.Services {
 			command.Parameters.AddWithValue( "@address", request.Address ?? string.Empty );
 			command.Parameters.AddWithValue( "@phone", request.PhoneNumber );
 			command.Parameters.AddWithValue( "@email", request.Email ?? string.Empty );
-			command.Parameters.AddWithValue( "@name", request.Birthday );
+			command.Parameters.AddWithValue( "@birthday", request.Birthday );
 			command.Parameters.AddWithValue( "@imageUrl", request.ImageUrl ?? string.Empty );
 		}
 
