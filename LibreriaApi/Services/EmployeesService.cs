@@ -88,10 +88,10 @@ namespace LibreriaApi.Services {
 				id: await reader.GetFieldValueAsync<int>( "id_empleado" ),
 				name: await reader.GetFieldValueAsync<string>( "nombre" ),
 				role: await reader.GetFieldValueAsync<string>( "puesto" ),
-				address: await reader.GetFieldValueAsync<string?>( "direccion" ),
+				address: !await reader.IsDBNullAsync("direccion") ? await reader.GetFieldValueAsync<string?>( "direccion" ) : null,
 				phoneNumber: await reader.GetFieldValueAsync<string>( "telefono" ),
 				email: await reader.GetFieldValueAsync<string>( "correo" ),
-				birthday: await reader.GetFieldValueAsync<DateTime?>( "fecha_nacimiento" ),
+				birthday: !await reader.IsDBNullAsync( "fecha_nacimiento" ) ? await reader.GetFieldValueAsync<DateTime?>( "fecha_nacimiento" ) : null,
 				active: await reader.GetFieldValueAsync<bool>( "estado_emp" ),
 				imageUrl: await reader.GetFieldValueAsync<string>( "imagen_url" )
 			);

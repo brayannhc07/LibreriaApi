@@ -87,10 +87,10 @@ namespace LibreriaApi.Services {
 			return new MemberResponse(
 				id: await reader.GetFieldValueAsync<int>( "id_socio" ),
 				name: await reader.GetFieldValueAsync<string>( "nombre" ),
-				address: await reader.GetFieldValueAsync<string?>( "direccion" ),
+				address: !await reader.IsDBNullAsync("direccion")?  await reader.GetFieldValueAsync<string?>( "direccion" ): null,
 				phoneNumber: await reader.GetFieldValueAsync<string>( "telefono" ),
-				email: await reader.GetFieldValueAsync<string?>( "correo" ),
-				birthday: await reader.GetFieldValueAsync<DateTime?>( "fecha_nacimiento" ),
+				email: !await reader.IsDBNullAsync("correo")? await reader.GetFieldValueAsync<string?>( "correo" ) : null,
+				birthday: !await reader.IsDBNullAsync("fecha_nacimiento") ? await reader.GetFieldValueAsync<DateTime?>( "fecha_nacimiento" ) : null,
 				activeMembership: await reader.GetFieldValueAsync<bool>( "estado_membresia" ),
 				imageUrl: await reader.GetFieldValueAsync<string>( "imagen_url" ) ?? string.Empty
 			);

@@ -1,4 +1,5 @@
 ﻿using LibreriaApi.Models;
+using MySql.Data.MySqlClient;
 
 namespace LibreriaApi.Interfaces {
 	public interface IGenresService {
@@ -12,7 +13,7 @@ namespace LibreriaApi.Interfaces {
 		/// </summary>
 		/// <param name="bookId">Id del libro del que se quieren consultar los géneros.</param>
 		/// <returns>Devuelve un <see cref="Task"/> que resuelve los géneros del libro encontrados.</returns>
-		Task<IEnumerable<GenreResponse>> ReadByBookIdAsync( int bookId );
+		Task<IEnumerable<GenreResponse>> GetFromBookIdAsync( int bookId );
 		/// <summary>
 		/// Intenta obtener un género existente por su id de forma asíncrona.
 		/// </summary>
@@ -38,6 +39,12 @@ namespace LibreriaApi.Interfaces {
 		/// <param name="genreId">Id del género que se quiere eliminar.</param>
 		/// <returns>Devuelve un <see cref="Task"/> que resuelve los datos del género eliminado, sino se eliminó devuelve null.</returns>
 		Task<GenreResponse?> DeleteAsync( int genreId );
+		/// <summary>
+		/// Intenta administrar los géneros que le pertenecen a un libro, agregando los nuevos,
+		/// eliminando los que no se ocupen y dejando los existentes de forma asíncrona.
+		/// </summary>
+		/// <returns>Devuelve un <see cref="Task"/> que resuelve los géneros actuales del libro.</returns>
+		Task ManageBookGenres( int bookId, IEnumerable<int> genreIds, MySqlTransaction transaction, MySqlConnection connection );
 
 	}
 }

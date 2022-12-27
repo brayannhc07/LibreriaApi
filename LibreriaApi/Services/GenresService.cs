@@ -15,6 +15,7 @@ namespace LibreriaApi.Services {
 
 		private const string SELECT_BY_ID_COMMAND = "SELECT * FROM generos WHERE id_genero = @genreId";
 		private const string SELECT_BY_BOOK_ID_COMMAND = "SELECT g.*, lg.id_libro FROM libro_generos lg, generos g WHERE lg.id_genero = g.id_genero AND id_libro = @bookId ORDER BY genero DESC";
+		private const string INSERT_BOOK_GENRES_COMMAND = "INSERT INTO libro_generos(id_genero, id_libro) VALUES(@genreId,@bookId)";
 
 		public GenresService( MySqlConnection connection ) {
 			_connection = connection;
@@ -34,9 +35,9 @@ namespace LibreriaApi.Services {
 			return genres;
 		}
 
-		public async Task<IEnumerable<GenreResponse>> ReadByBookIdAsync( int bookId ) {
+		public async Task<IEnumerable<GenreResponse>> GetFromBookIdAsync( int bookId ) {
 			using var command = new MySqlCommand( SELECT_BY_BOOK_ID_COMMAND, _connection );
-			command.Parameters.AddWithValue( "@bookId", bookId );
+			AddBookIdParam( command, bookId );
 
 			using var reader = await command.ExecuteReaderAsync();
 
@@ -72,6 +73,19 @@ namespace LibreriaApi.Services {
 			return GetResponseByRequest( ( int )command.LastInsertedId, request );
 		}
 
+		public async Task ManageBookGenres( int bookId, IEnumerable<int> genreIds, MySqlTransaction transaction, MySqlConnection connection ) {
+			using var command = new MySqlCommand( INSERT_BOOK_GENRES_COMMAND, connection, transaction );
+
+			foreach( var genreId in genreIds ) {
+				AddBookIdParam( command, bookId );
+				AddGenreIdParam( command, genreId );
+
+				await command.ExecuteNonQueryAsync();
+
+				command.Parameters.Clear();
+			}
+		}
+
 		public async Task<GenreResponse?> UpdateAsync( GenreRequest request, int genreId ) {
 
 			var genre = await FindByIdAsync( genreId );
@@ -82,8 +96,8 @@ namespace LibreriaApi.Services {
 			AddRequestParams( command, request );
 			AddGenreIdParam( command, genreId );
 
-			if( await command.ExecuteNonQueryAsync() < 1 ) 
-				throw new Exception("No se pudo editar el género, intenta más tarde.");
+			if( await command.ExecuteNonQueryAsync() < 1 )
+				throw new Exception( "No se pudo editar el género, intenta más tarde." );
 
 			return GetResponseByRequest( genreId, request );
 		}
@@ -117,7 +131,7 @@ namespace LibreriaApi.Services {
 				id: id,
 				name: request.Name!,
 				imageUrl: request.ImageUrl ?? ""
-				);
+			);
 		}
 
 		private static void AddRequestParams( MySqlCommand command, GenreRequest request ) {
@@ -128,5 +142,9 @@ namespace LibreriaApi.Services {
 		private static void AddGenreIdParam( MySqlCommand command, int genreId ) {
 			command.Parameters.AddWithValue( "@genreId", genreId );
 		}
+		private static void AddBookIdParam( MySqlCommand command, int bookId ) {
+			command.Parameters.AddWithValue( "@bookId", bookId );
+		}
+
 	}
 }

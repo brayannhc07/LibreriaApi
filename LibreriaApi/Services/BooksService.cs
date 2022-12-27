@@ -1,12 +1,15 @@
 ﻿using LibreriaApi.Interfaces;
 using LibreriaApi.Models;
 using MySql.Data.MySqlClient;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Net;
 
 namespace LibreriaApi.Services {
 	public class BooksService: IBooksService {
 		private readonly MySqlConnection _connection;
+		private readonly IGenresService _genresService;
 
 		private const string SELECT_COMMAND = "SELECT * FROM libros ORDER BY titulo DESC";
 		private const string INSERT_COMMAND = "INSERT INTO libros(isbn , titulo, autor , sinopsis, editorial , numero_pag, imagen_url) VALUES(@isbn ,@title, @author, @synopsis, @editorial, @pages, @imageUrl)";
@@ -15,8 +18,9 @@ namespace LibreriaApi.Services {
 
 		private const string SELECT_BY_ID_COMMAND = "SELECT * FROM libros WHERE id_libro = @bookId";
 
-		public BooksService( MySqlConnection connection ) {
+		public BooksService( MySqlConnection connection, IGenresService genresService ) {
 			_connection = connection;
+			_genresService = genresService;
 		}
 
 		public async Task<IEnumerable<BookResponse>> ReadAsync() {
@@ -27,7 +31,10 @@ namespace LibreriaApi.Services {
 
 			if( reader.HasRows ) {
 				while( await reader.ReadAsync() ) {
-					books.Add( await GetResponseFromReader( reader ) );
+					var bookId = await reader.GetFieldValueAsync<int>( "id_libro" );
+					books.Add( await GetResponseFromReader( reader,
+						await _genresService.GetFromBookIdAsync( bookId )
+					) );
 				}
 			}
 			return books;
@@ -42,17 +49,28 @@ namespace LibreriaApi.Services {
 			if( !reader.HasRows ) return null;
 
 			await reader.ReadAsync();
-			return await GetResponseFromReader( reader );
+			return await GetResponseFromReader( reader, await _genresService.GetFromBookIdAsync( bookId ) );
 		}
 
 		public async Task<BookResponse> CreateAsync( BookRequest request ) {
-			using var command = new MySqlCommand( INSERT_COMMAND, _connection );
+			using var transaction = await _connection.BeginTransactionAsync();
+			using var command = new MySqlCommand( INSERT_COMMAND, _connection, transaction );
 			AddRequestParams( command, request );
+			int bookId;
+			try {
+				if( await command.ExecuteNonQueryAsync() < 1 )
+					throw new Exception( "No se pudo registrar el socio, intenta más tarde." );
 
-			if( await command.ExecuteNonQueryAsync() < 1 )
-				throw new Exception( "No se pudo registrar al socio, intenta más tarde." );
+				bookId = ( int )command.LastInsertedId;
 
-			return GetResponseFromRequest( ( int )command.LastInsertedId, request );
+				await _genresService.ManageBookGenres( bookId, request.Genres!, transaction, _connection );
+
+				await transaction.CommitAsync();
+			} catch( Exception ) {
+				await transaction.RollbackAsync();
+				throw;
+			}
+			return GetResponseFromRequest( bookId, request, await _genresService.GetFromBookIdAsync( bookId ) );
 		}
 
 		public async Task<BookResponse?> UpdateAsync( BookRequest request, int bookId ) {
@@ -66,7 +84,7 @@ namespace LibreriaApi.Services {
 			if( await command.ExecuteNonQueryAsync() < 1 )
 				throw new Exception( "No se pudo editar el libro, intenta más tarde." );
 
-			return GetResponseFromRequest( bookId, request, book.Available );
+			return GetResponseFromRequest( bookId, request, await _genresService.GetFromBookIdAsync( bookId ), book.Available );
 		}
 
 		public async Task<BookResponse?> DeleteAsync( int bookId ) {
@@ -82,7 +100,8 @@ namespace LibreriaApi.Services {
 			return book;
 		}
 
-		private static async Task<BookResponse> GetResponseFromReader( DbDataReader reader ) {
+		private static async Task<BookResponse> GetResponseFromReader( DbDataReader reader,
+			IEnumerable<GenreResponse> genres ) {
 			return new BookResponse(
 				id: await reader.GetFieldValueAsync<int>( "id_libro" ),
 				isbn: int.Parse( await reader.GetFieldValueAsync<string>( "isbn" ) ),
@@ -92,11 +111,13 @@ namespace LibreriaApi.Services {
 				editorial: await reader.GetFieldValueAsync<string>( "editorial" ),
 				pages: await reader.GetFieldValueAsync<int>( "numero_pag" ),
 				imageUrl: await reader.GetFieldValueAsync<string>( "imagen_url" ),
-				available: await reader.GetFieldValueAsync<bool>( "disponible" )
+				available: await reader.GetFieldValueAsync<bool>( "disponible" ),
+				genres: genres
 			);
 		}
 
-		private static BookResponse GetResponseFromRequest( int id, BookRequest request, bool available = true ) {
+		private static BookResponse GetResponseFromRequest( int id, BookRequest request,
+			IEnumerable<GenreResponse> genres, bool available = true ) {
 			return new BookResponse(
 				id: id,
 				isbn: request.Isbn ?? 0,
@@ -106,7 +127,8 @@ namespace LibreriaApi.Services {
 				editorial: request.Editorial!,
 				pages: request.Pages ?? 0,
 				imageUrl: request.ImageUrl ?? string.Empty,
-				available: available
+				available: available,
+				genres: genres
 			);
 		}
 
