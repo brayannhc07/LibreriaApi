@@ -8,15 +8,13 @@ namespace LibreriaApi.Services {
 	public class GenresService: IGenresService {
 		private readonly MySqlConnection _connection;
 
-		private const string SELECT_COMMAND = "SELECT * FROM generos ORDER BY genero DESC";
+		private const string SELECT_COMMAND = "SELECT * FROM generos ORDER BY genero";
 		private const string INSERT_COMMAND = "INSERT INTO generos(genero, imagen_url) VALUES(@name, @imageUrl)";
 		private const string UPDATE_COMMAND = "UPDATE generos SET genero = @name, imagen_url = @imageUrl WHERE id_genero = @genreId";
 		private const string DELETE_COMMAND = "DELETE FROM generos WHERE id_genero = @genreId";
 
 		private const string SELECT_BY_ID_COMMAND = "SELECT * FROM generos WHERE id_genero = @genreId";
-		private const string SELECT_BY_BOOK_ID_COMMAND = "SELECT g.*, lg.id_libro FROM libro_generos lg, generos g WHERE lg.id_genero = g.id_genero AND id_libro = @bookId ORDER BY genero DESC";
-		private const string INSERT_BOOK_GENRES_COMMAND = "INSERT INTO libro_generos(id_genero, id_libro) VALUES(@genreId,@bookId)";
-
+		private const string SELECT_BY_BOOK_ID_COMMAND = "SELECT g.*, lg.id_libro FROM libro_generos lg, generos g WHERE lg.id_genero = g.id_genero AND id_libro = @bookId ORDER BY genero";
 		public GenresService( MySqlConnection connection ) {
 			_connection = connection;
 		}
@@ -71,19 +69,6 @@ namespace LibreriaApi.Services {
 			await command.ExecuteNonQueryAsync();
 
 			return GetResponseByRequest( ( int )command.LastInsertedId, request );
-		}
-
-		public async Task ManageBookGenres( int bookId, IEnumerable<int> genreIds, MySqlTransaction transaction, MySqlConnection connection ) {
-			using var command = new MySqlCommand( INSERT_BOOK_GENRES_COMMAND, connection, transaction );
-
-			foreach( var genreId in genreIds ) {
-				AddBookIdParam( command, bookId );
-				AddGenreIdParam( command, genreId );
-
-				await command.ExecuteNonQueryAsync();
-
-				command.Parameters.Clear();
-			}
 		}
 
 		public async Task<GenreResponse?> UpdateAsync( GenreRequest request, int genreId ) {
@@ -142,6 +127,7 @@ namespace LibreriaApi.Services {
 		private static void AddGenreIdParam( MySqlCommand command, int genreId ) {
 			command.Parameters.AddWithValue( "@genreId", genreId );
 		}
+
 		private static void AddBookIdParam( MySqlCommand command, int bookId ) {
 			command.Parameters.AddWithValue( "@bookId", bookId );
 		}

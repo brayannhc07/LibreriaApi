@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Net;
+using System.Transactions;
 
 namespace LibreriaApi.Services {
 	public class BooksService: IBooksService {
@@ -17,6 +18,9 @@ namespace LibreriaApi.Services {
 		private const string DELETE_COMMAND = "DELETE FROM libros WHERE id_libro = @bookId";
 
 		private const string SELECT_BY_ID_COMMAND = "SELECT * FROM libros WHERE id_libro = @bookId";
+
+		private const string DELETE_BOOK_GENRES_COMMAND = "DELETE FROM libro_generos WHERE id_libro = @bookId AND id_genero = @genreId";
+		private const string INSERT_BOOK_GENRES_COMMAND = "INSERT INTO libro_generos(id_genero, id_libro) VALUES(@genreId, @bookId)";
 
 		public BooksService( MySqlConnection connection, IGenresService genresService ) {
 			_connection = connection;
@@ -42,7 +46,7 @@ namespace LibreriaApi.Services {
 
 		public async Task<BookResponse?> FindByIdAsync( int bookId ) {
 			using var command = new MySqlCommand( SELECT_BY_ID_COMMAND, _connection );
-			AddIdParam( command, bookId );
+			AddBookIdParam( command, bookId );
 
 			using var reader = await command.ExecuteReaderAsync();
 
@@ -63,7 +67,7 @@ namespace LibreriaApi.Services {
 
 				bookId = ( int )command.LastInsertedId;
 
-				await _genresService.ManageBookGenres( bookId, request.Genres!, transaction, _connection );
+				await ManageBookGenres( bookId, request.Genres!, transaction );
 
 				await transaction.CommitAsync();
 			} catch( Exception ) {
@@ -77,12 +81,23 @@ namespace LibreriaApi.Services {
 			var book = await FindByIdAsync( bookId );
 			if( book is null ) return null;
 
-			using var command = new MySqlCommand( UPDATE_COMMAND, _connection );
+			using var transaction = await _connection.BeginTransactionAsync();
+			using var command = new MySqlCommand( UPDATE_COMMAND, _connection, transaction );
 			AddRequestParams( command, request );
-			AddIdParam( command, bookId );
+			AddBookIdParam( command, bookId );
 
-			if( await command.ExecuteNonQueryAsync() < 1 )
-				throw new Exception( "No se pudo editar el libro, intenta más tarde." );
+			try {
+				if( await command.ExecuteNonQueryAsync() < 1 )
+					throw new Exception( "No se pudo editar el libro, intenta más tarde." );
+
+				await ManageBookGenres( bookId, request.Genres!, transaction );
+
+				await transaction.CommitAsync();
+			} catch( Exception ) {
+				await transaction.RollbackAsync();
+				throw;
+			}
+
 
 			return GetResponseFromRequest( bookId, request, await _genresService.GetFromBookIdAsync( bookId ), book.Available );
 		}
@@ -92,7 +107,7 @@ namespace LibreriaApi.Services {
 			if( book is null ) return null;
 
 			using var command = new MySqlCommand( DELETE_COMMAND, _connection );
-			AddIdParam( command, bookId );
+			AddBookIdParam( command, bookId );
 
 			if( await command.ExecuteNonQueryAsync() < 1 )
 				throw new Exception( "No se pudo eliminar el libro, intenta más tarde." );
@@ -142,8 +157,46 @@ namespace LibreriaApi.Services {
 			command.Parameters.AddWithValue( "@imageUrl", request.ImageUrl ?? string.Empty );
 		}
 
-		private static void AddIdParam( MySqlCommand command, int bookId ) {
+
+
+		private async Task ManageBookGenres( int bookId, IEnumerable<int> genreIds, MySqlTransaction transaction ) {
+			genreIds = genreIds.Distinct().Where( x => x > 0 ); // Limpiar lista
+
+			var currentGenreIds = ( await _genresService.GetFromBookIdAsync( bookId ) ).Select( x => x.Id );
+			var insertGenreIds = genreIds.Except( currentGenreIds );
+			var deleteGenreIds = currentGenreIds.Except( genreIds );
+
+			using var removeBooksCommand = new MySqlCommand( DELETE_BOOK_GENRES_COMMAND,
+				_connection, transaction );
+			using var addBooksCommand = new MySqlCommand( INSERT_BOOK_GENRES_COMMAND, 
+				_connection, transaction );
+
+			// Agregar géneros
+			foreach( var genreId in insertGenreIds ) {
+				AddBookIdParam( addBooksCommand, bookId );
+				AddGenreIdParam( addBooksCommand, genreId );
+
+				await addBooksCommand.ExecuteNonQueryAsync();
+
+				addBooksCommand.Parameters.Clear();
+			}
+
+			// Borrar géneros
+			foreach( var genreId in deleteGenreIds ) {
+				AddBookIdParam( removeBooksCommand, bookId );
+				AddGenreIdParam( removeBooksCommand, genreId );
+
+				await removeBooksCommand.ExecuteNonQueryAsync();
+
+				removeBooksCommand.Parameters.Clear();
+			}
+		}
+		private static void AddBookIdParam( MySqlCommand command, int bookId ) {
 			command.Parameters.AddWithValue( "@bookId", bookId );
+		}
+
+		private static void AddGenreIdParam( MySqlCommand command, int genreId ) {
+			command.Parameters.AddWithValue( "@genreId", genreId );
 		}
 	}
 }

@@ -39,12 +39,5 @@ namespace LibreriaApi.Interfaces {
 		/// <param name="genreId">Id del género que se quiere eliminar.</param>
 		/// <returns>Devuelve un <see cref="Task"/> que resuelve los datos del género eliminado, sino se eliminó devuelve null.</returns>
 		Task<GenreResponse?> DeleteAsync( int genreId );
-		/// <summary>
-		/// Intenta administrar los géneros que le pertenecen a un libro, agregando los nuevos,
-		/// eliminando los que no se ocupen y dejando los existentes de forma asíncrona.
-		/// </summary>
-		/// <returns>Devuelve un <see cref="Task"/> que resuelve los géneros actuales del libro.</returns>
-		Task ManageBookGenres( int bookId, IEnumerable<int> genreIds, MySqlTransaction transaction, MySqlConnection connection );
-
 	}
 }
