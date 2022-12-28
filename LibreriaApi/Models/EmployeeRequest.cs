@@ -11,13 +11,13 @@ namespace LibreriaApi.Models {
 		[MaxLength( 40, ErrorMessage = MAX_LENGTH_ERROR_MESSAGE )]
 		public string? Address { get; set; }
 		[Required( ErrorMessage = REQUIRED_ERROR_MESSAGE )]
-		[MaxLength( 10, ErrorMessage = MAX_LENGTH_ERROR_MESSAGE )]
+		[MaxLength( 15, ErrorMessage = MAX_LENGTH_ERROR_MESSAGE )]
 		public string? PhoneNumber { get; set; }
 		[Required( ErrorMessage = REQUIRED_ERROR_MESSAGE )]
 		[MaxLength( 60, ErrorMessage = MAX_LENGTH_ERROR_MESSAGE )]
 		public string? Email { get; set; }
 		public DateTime? Birthday { get; set; }
-		[MaxLength( 250, ErrorMessage = MAX_LENGTH_ERROR_MESSAGE )]
+		[MaxLength( 500, ErrorMessage = MAX_LENGTH_ERROR_MESSAGE )]
 		public string? ImageUrl { get; set; }
 
 	}

@@ -22,7 +22,7 @@ namespace LibreriaApi.Models {
 		[DisplayName( "Fecha de nacimiento" )]
 		public DateTime? Birthday { get; set; }
 		[DisplayName( "Url de la imagen" )]
-		[MaxLength( 250, ErrorMessage = MAX_LENGTH_ERROR_MESSAGE )]
+		[MaxLength( 500, ErrorMessage = MAX_LENGTH_ERROR_MESSAGE )]
 		public string? ImageUrl { get; set; }
 	}
 }

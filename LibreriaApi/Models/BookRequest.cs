@@ -14,7 +14,7 @@ namespace LibreriaApi.Models {
 		public string? Title { get; set; }
 		[DisplayName( "Autor" )]
 		[Required( ErrorMessage = REQUIRED_ERROR_MESSAGE )]
-		[MaxLength( 45, ErrorMessage = MAX_LENGTH_ERROR_MESSAGE )]
+		[MaxLength( 500, ErrorMessage = MAX_LENGTH_ERROR_MESSAGE )]
 		public string? Author { get; set; }
 		[DisplayName( "Sinopsis" )]
 		[Required( ErrorMessage = REQUIRED_ERROR_MESSAGE )]
@@ -29,7 +29,7 @@ namespace LibreriaApi.Models {
 		[Range( 1, int.MaxValue, ErrorMessage = RANGE_ERROR_MESSAGE )]
 		public int? Pages { get; set; }
 		[DisplayName( "Url de la portada" )]
-		[MaxLength( 250, ErrorMessage = MAX_LENGTH_ERROR_MESSAGE )]
+		[MaxLength( 500, ErrorMessage = MAX_LENGTH_ERROR_MESSAGE )]
 		public string? ImageUrl { get; set; }
 		[DisplayName( "Géneros" )]
 		[Required( ErrorMessage = REQUIRED_ERROR_MESSAGE )]
