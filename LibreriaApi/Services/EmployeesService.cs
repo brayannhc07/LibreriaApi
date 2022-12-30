@@ -1,11 +1,13 @@
 ﻿using LibreriaApi.Interfaces;
-using LibreriaApi.Models;
+using LibreriaApi.Models.Requests;
+using LibreriaApi.Models.Responses;
 using MySql.Data.MySqlClient;
 using System.Data;
 using System.Data.Common;
 
-namespace LibreriaApi.Services {
-	public class EmployeesService: IEmployeesService {
+namespace LibreriaApi.Services
+{
+    public class EmployeesService: IEmployeesService {
 		private readonly MySqlConnection _connection;
 
 		private const string SELECT_COMMAND = "SELECT * FROM empleados ORDER BY nombre DESC";
@@ -19,7 +21,7 @@ namespace LibreriaApi.Services {
 			_connection = connection;
 		}
 
-		public async Task<IEnumerable<EmployeeResponse>> ReadAsync() {
+		public async Task<IEnumerable<EmployeeResponse>> GetAllAsync() {
 			using var command = new MySqlCommand( SELECT_COMMAND, _connection );
 			using var reader = await command.ExecuteReaderAsync();
 

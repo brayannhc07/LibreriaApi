@@ -1,22 +1,24 @@
 ﻿using LibreriaApi.Interfaces;
-using LibreriaApi.Models;
+using LibreriaApi.Models.Requests;
+using LibreriaApi.Models.Responses;
 using Microsoft.AspNetCore.Mvc;
 
-namespace LibreriaApi.Controllers {
-	[Route( "api/[controller]" )]
+namespace LibreriaApi.Controllers
+{
+    [Route( "api/[controller]" )]
 	[ApiController]
 	public class BooksController: LibraryControllerBase {
 		private readonly IBooksService _booksService;
 
 		public BooksController( IBooksService booksService ) {
-			this._booksService = booksService;
+			_booksService = booksService;
 		}
 
 		[HttpGet]
 		public async Task<ActionResult<Response<IEnumerable<BookResponse>>>> GetAll() {
 			Response<IEnumerable<BookResponse>> response = new();
 			try {
-				var books = await _booksService.ReadAsync();
+				var books = await _booksService.GetAllAsync();
 				return Ok( response.Commit( "", books ) );
 			} catch( Exception ex ) {
 				return GetServerErrorStatus( response, ex );

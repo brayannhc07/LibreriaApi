@@ -1,10 +1,12 @@
 ﻿using LibreriaApi.Interfaces;
-using LibreriaApi.Models;
+using LibreriaApi.Models.Requests;
+using LibreriaApi.Models.Responses;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-namespace LibreriaApi.Controllers {
-	[Route( "api/[controller]" )]
+namespace LibreriaApi.Controllers
+{
+    [Route( "api/[controller]" )]
 	[ApiController]
 	public class EmployeesController: LibraryControllerBase {
 		private readonly IEmployeesService _employeesService;
@@ -17,7 +19,7 @@ namespace LibreriaApi.Controllers {
 		public async Task<ActionResult<Response<IEnumerable<EmployeeResponse>>>> GetAll() {
 			Response<IEnumerable<EmployeeResponse>> response = new();
 			try {
-				var employees = await _employeesService.ReadAsync();
+				var employees = await _employeesService.GetAllAsync();
 				return Ok( response.Commit( "", employees ) );
 			} catch( Exception ex ) {
 				return GetServerErrorStatus( response, ex );

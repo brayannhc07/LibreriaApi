@@ -1,11 +1,13 @@
 ﻿using LibreriaApi.Interfaces;
-using LibreriaApi.Models;
+using LibreriaApi.Models.Requests;
+using LibreriaApi.Models.Responses;
 using MySql.Data.MySqlClient;
 using System.Data;
 using System.Data.Common;
 
-namespace LibreriaApi.Services {
-	public class GenresService: IGenresService {
+namespace LibreriaApi.Services
+{
+    public class GenresService: IGenresService {
 		private readonly MySqlConnection _connection;
 
 		private const string SELECT_COMMAND = "SELECT * FROM generos ORDER BY genero";
@@ -15,11 +17,12 @@ namespace LibreriaApi.Services {
 
 		private const string SELECT_BY_ID_COMMAND = "SELECT * FROM generos WHERE id_genero = @genreId";
 		private const string SELECT_BY_BOOK_ID_COMMAND = "SELECT g.*, lg.id_libro FROM libro_generos lg, generos g WHERE lg.id_genero = g.id_genero AND id_libro = @bookId ORDER BY genero";
+	
 		public GenresService( MySqlConnection connection ) {
 			_connection = connection;
 		}
 
-		public async Task<IEnumerable<GenreResponse>> ReadAsync() {
+		public async Task<IEnumerable<GenreResponse>> GetAllAsync() {
 			using var command = new MySqlCommand( SELECT_COMMAND, _connection );
 			using var reader = await command.ExecuteReaderAsync();
 
@@ -27,13 +30,13 @@ namespace LibreriaApi.Services {
 
 			if( reader.HasRows ) {
 				while( await reader.ReadAsync() ) {
-					genres.Add( await GetResponseByReader( reader ) );
+					genres.Add( await GetResponseFromReader( reader ) );
 				}
 			}
 			return genres;
 		}
 
-		public async Task<IEnumerable<GenreResponse>> GetFromBookIdAsync( int bookId ) {
+		public async Task<IEnumerable<GenreResponse>> GetByBookIdAsync( int bookId ) {
 			using var command = new MySqlCommand( SELECT_BY_BOOK_ID_COMMAND, _connection );
 			AddBookIdParam( command, bookId );
 
@@ -43,7 +46,7 @@ namespace LibreriaApi.Services {
 
 			if( reader.HasRows ) {
 				while( await reader.ReadAsync() ) {
-					genres.Add( await GetResponseByReader( reader ) );
+					genres.Add( await GetResponseFromReader( reader ) );
 				}
 			}
 
@@ -59,7 +62,7 @@ namespace LibreriaApi.Services {
 			if( !reader.HasRows ) return null;
 
 			await reader.ReadAsync();
-			return await GetResponseByReader( reader );
+			return await GetResponseFromReader( reader );
 		}
 
 		public async Task<GenreResponse> CreateAsync( GenreRequest request ) {
@@ -103,7 +106,7 @@ namespace LibreriaApi.Services {
 		}
 
 
-		private static async Task<GenreResponse> GetResponseByReader( DbDataReader reader ) {
+		private static async Task<GenreResponse> GetResponseFromReader( DbDataReader reader ) {
 			return new GenreResponse(
 				id: await reader.GetFieldValueAsync<int>( "id_genero" ),
 				name: await reader.GetFieldValueAsync<string>( "genero" ),

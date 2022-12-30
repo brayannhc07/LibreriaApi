@@ -1,5 +1,6 @@
 ﻿using LibreriaApi.Interfaces;
-using LibreriaApi.Models;
+using LibreriaApi.Models.Requests;
+using LibreriaApi.Models.Responses;
 using MySql.Data.MySqlClient;
 using System.Collections.Generic;
 using System.Data;
@@ -12,12 +13,13 @@ namespace LibreriaApi.Services {
 		private readonly MySqlConnection _connection;
 		private readonly IGenresService _genresService;
 
-		private const string SELECT_COMMAND = "SELECT * FROM libros ORDER BY titulo DESC";
+		private const string SELECT_COMMAND = "SELECT * FROM libros ORDER BY titulo";
 		private const string INSERT_COMMAND = "INSERT INTO libros(isbn , titulo, autor , sinopsis, editorial , numero_pag, imagen_url) VALUES(@isbn ,@title, @author, @synopsis, @editorial, @pages, @imageUrl)";
 		private const string UPDATE_COMMAND = "UPDATE libros SET isbn = @isbn , titulo = @title, autor = @author, sinopsis = @synopsis, editorial = @editorial, numero_pag = @pages, imagen_url = @imageUrl WHERE id_libro = @bookId";
 		private const string DELETE_COMMAND = "DELETE FROM libros WHERE id_libro = @bookId";
 
 		private const string SELECT_BY_ID_COMMAND = "SELECT * FROM libros WHERE id_libro = @bookId";
+		private const string SELECT_BY_BORROW_ID_COMMAND = "SELECT l.*, pl.id_libro FROM prestamo_libros pl, libros l WHERE pl.id_libro = l.id_libro AND id_prestamo = @borrowId ORDER BY l.titulo";
 
 		private const string DELETE_BOOK_GENRES_COMMAND = "DELETE FROM libro_generos WHERE id_libro = @bookId AND id_genero = @genreId";
 		private const string INSERT_BOOK_GENRES_COMMAND = "INSERT INTO libro_generos(id_genero, id_libro) VALUES(@genreId, @bookId)";
@@ -27,7 +29,7 @@ namespace LibreriaApi.Services {
 			_genresService = genresService;
 		}
 
-		public async Task<IEnumerable<BookResponse>> ReadAsync() {
+		public async Task<IEnumerable<BookResponse>> GetAllAsync() {
 			using var command = new MySqlCommand( SELECT_COMMAND, _connection );
 			using var reader = await command.ExecuteReaderAsync();
 
@@ -35,12 +37,26 @@ namespace LibreriaApi.Services {
 
 			if( reader.HasRows ) {
 				while( await reader.ReadAsync() ) {
-					var bookId = await reader.GetFieldValueAsync<int>( "id_libro" );
-					books.Add( await GetResponseFromReader( reader,
-						await _genresService.GetFromBookIdAsync( bookId )
-					) );
+					books.Add( await GetResponseFromReader( reader ) );
 				}
 			}
+			return books;
+		}
+
+		public async Task<IEnumerable<BookResponse>> GetByBorrowIdAsync( int borrowId ) {
+			using var command = new MySqlCommand( SELECT_BY_BORROW_ID_COMMAND, _connection );
+			AddBorrowIdParam( command, borrowId );
+
+			using var reader = await command.ExecuteReaderAsync();
+
+			var books = new List<BookResponse>();
+
+			if( reader.HasRows ) {
+				while( await reader.ReadAsync() ) {
+					books.Add( await GetResponseFromReader( reader ) );
+				}
+			}
+
 			return books;
 		}
 
@@ -53,7 +69,7 @@ namespace LibreriaApi.Services {
 			if( !reader.HasRows ) return null;
 
 			await reader.ReadAsync();
-			return await GetResponseFromReader( reader, await _genresService.GetFromBookIdAsync( bookId ) );
+			return await GetResponseFromReader( reader );
 		}
 
 		public async Task<BookResponse> CreateAsync( BookRequest request ) {
@@ -74,7 +90,7 @@ namespace LibreriaApi.Services {
 				await transaction.RollbackAsync();
 				throw;
 			}
-			return GetResponseFromRequest( bookId, request, await _genresService.GetFromBookIdAsync( bookId ) );
+			return await GetResponseFromRequest( bookId, request );
 		}
 
 		public async Task<BookResponse?> UpdateAsync( BookRequest request, int bookId ) {
@@ -99,7 +115,7 @@ namespace LibreriaApi.Services {
 			}
 
 
-			return GetResponseFromRequest( bookId, request, await _genresService.GetFromBookIdAsync( bookId ), book.Available );
+			return await GetResponseFromRequest( bookId, request, book.Available );
 		}
 
 		public async Task<BookResponse?> DeleteAsync( int bookId ) {
@@ -115,10 +131,10 @@ namespace LibreriaApi.Services {
 			return book;
 		}
 
-		private static async Task<BookResponse> GetResponseFromReader( DbDataReader reader,
-			IEnumerable<GenreResponse> genres ) {
+		private async Task<BookResponse> GetResponseFromReader( DbDataReader reader ) {
+			var id = await reader.GetFieldValueAsync<int>( "id_libro" );
 			return new BookResponse(
-				id: await reader.GetFieldValueAsync<int>( "id_libro" ),
+				id: id,
 				isbn: int.Parse( await reader.GetFieldValueAsync<string>( "isbn" ) ),
 				title: await reader.GetFieldValueAsync<string>( "titulo" ),
 				author: await reader.GetFieldValueAsync<string>( "autor" ),
@@ -127,12 +143,12 @@ namespace LibreriaApi.Services {
 				pages: await reader.GetFieldValueAsync<int>( "numero_pag" ),
 				imageUrl: await reader.GetFieldValueAsync<string>( "imagen_url" ),
 				available: await reader.GetFieldValueAsync<bool>( "disponible" ),
-				genres: genres
+				genres: await _genresService.GetByBookIdAsync( id )
 			);
 		}
 
-		private static BookResponse GetResponseFromRequest( int id, BookRequest request,
-			IEnumerable<GenreResponse> genres, bool available = true ) {
+		private async Task<BookResponse> GetResponseFromRequest( int id, BookRequest request,
+			bool available = true ) {
 			return new BookResponse(
 				id: id,
 				isbn: request.Isbn ?? 0,
@@ -143,7 +159,7 @@ namespace LibreriaApi.Services {
 				pages: request.Pages ?? 0,
 				imageUrl: request.ImageUrl ?? string.Empty,
 				available: available,
-				genres: genres
+				genres: await _genresService.GetByBookIdAsync( id )
 			);
 		}
 
@@ -157,18 +173,16 @@ namespace LibreriaApi.Services {
 			command.Parameters.AddWithValue( "@imageUrl", request.ImageUrl ?? string.Empty );
 		}
 
-
-
 		private async Task ManageBookGenres( int bookId, IEnumerable<int> genreIds, MySqlTransaction transaction ) {
 			genreIds = genreIds.Distinct().Where( x => x > 0 ); // Limpiar lista
 
-			var currentGenreIds = ( await _genresService.GetFromBookIdAsync( bookId ) ).Select( x => x.Id );
+			var currentGenreIds = ( await _genresService.GetByBookIdAsync( bookId ) ).Select( x => x.Id );
 			var insertGenreIds = genreIds.Except( currentGenreIds );
 			var deleteGenreIds = currentGenreIds.Except( genreIds );
 
 			using var removeBooksCommand = new MySqlCommand( DELETE_BOOK_GENRES_COMMAND,
 				_connection, transaction );
-			using var addBooksCommand = new MySqlCommand( INSERT_BOOK_GENRES_COMMAND, 
+			using var addBooksCommand = new MySqlCommand( INSERT_BOOK_GENRES_COMMAND,
 				_connection, transaction );
 
 			// Agregar géneros
@@ -191,12 +205,17 @@ namespace LibreriaApi.Services {
 				removeBooksCommand.Parameters.Clear();
 			}
 		}
+
 		private static void AddBookIdParam( MySqlCommand command, int bookId ) {
 			command.Parameters.AddWithValue( "@bookId", bookId );
 		}
 
 		private static void AddGenreIdParam( MySqlCommand command, int genreId ) {
 			command.Parameters.AddWithValue( "@genreId", genreId );
+		}
+
+		private static void AddBorrowIdParam( MySqlCommand command, int borrowId ) {
+			command.Parameters.AddWithValue( "@borrowId", borrowId );
 		}
 	}
 }

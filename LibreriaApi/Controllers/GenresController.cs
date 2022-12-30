@@ -1,9 +1,11 @@
 ﻿using LibreriaApi.Interfaces;
-using LibreriaApi.Models;
+using LibreriaApi.Models.Requests;
+using LibreriaApi.Models.Responses;
 using Microsoft.AspNetCore.Mvc;
 
-namespace LibreriaApi.Controllers {
-	[Route( "api/[controller]" )]
+namespace LibreriaApi.Controllers
+{
+    [Route( "api/[controller]" )]
 	[ApiController]
 	public class GenresController: LibraryControllerBase {
 		private readonly IGenresService _genresService;
@@ -16,7 +18,7 @@ namespace LibreriaApi.Controllers {
 		public async Task<ActionResult<Response<IEnumerable<GenreResponse>>>> GetAll() {
 			Response<IEnumerable<GenreResponse>> response = new();
 			try {
-				var genres = await _genresService.ReadAsync();
+				var genres = await _genresService.GetAllAsync();
 				return Ok( response.Commit( "", genres ) );
 			} catch( Exception ex ) {
 				return GetServerErrorStatus( response, ex );

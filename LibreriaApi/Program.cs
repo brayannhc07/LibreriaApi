@@ -36,6 +36,7 @@ builder.Services.AddScoped<IGenresService, GenresService>();
 builder.Services.AddScoped<IMembersService, MembersService>();
 builder.Services.AddScoped<IBooksService, BooksService>();
 builder.Services.AddScoped<IEmployeesService, EmployeesService>();
+builder.Services.AddScoped<IBorrowsService, BorrowsService>();
 
 var app = builder.Build();
 

@@ -1,19 +1,21 @@
-﻿using LibreriaApi.Models;
+﻿using LibreriaApi.Models.Requests;
+using LibreriaApi.Models.Responses;
 using MySql.Data.MySqlClient;
 
-namespace LibreriaApi.Interfaces {
-	public interface IGenresService {
+namespace LibreriaApi.Interfaces
+{
+    public interface IGenresService {
 		/// <summary>
 		/// Intenta obtener los géneros disponibles de forma asíncrona.
 		/// </summary>
 		/// <returns>Devuelve un <see cref="Task"/> que resuelve los géneros encontrados.</returns>
-		Task<IEnumerable<GenreResponse>> ReadAsync();
+		Task<IEnumerable<GenreResponse>> GetAllAsync();
 		/// <summary>
 		/// Intenta obtener los géneros que pertenecen a un libro de forma asíncrona.
 		/// </summary>
 		/// <param name="bookId">Id del libro del que se quieren consultar los géneros.</param>
 		/// <returns>Devuelve un <see cref="Task"/> que resuelve los géneros del libro encontrados.</returns>
-		Task<IEnumerable<GenreResponse>> GetFromBookIdAsync( int bookId );
+		Task<IEnumerable<GenreResponse>> GetByBookIdAsync( int bookId );
 		/// <summary>
 		/// Intenta obtener un género existente por su id de forma asíncrona.
 		/// </summary>
