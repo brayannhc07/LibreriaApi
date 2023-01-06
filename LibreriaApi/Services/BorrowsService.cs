@@ -59,6 +59,16 @@ namespace LibreriaApi.Services {
 			AddRequestParams( command, request );
 			int borrowId;
 			try {
+				var member = await _membersService.FindByIdAsync( request.MemberId ?? 0 );
+
+				if( member is null )
+					throw new Exception( "El socio no se pudo encontrar." );
+
+				var employee = await _employeesService.FindByIdAsync( request.EmployeeId ?? 0 );
+
+				if( employee is null )
+					throw new Exception( "El empleado no se pudo encontrar." );
+
 				if( await command.ExecuteNonQueryAsync() < 1 )
 					throw new Exception( "No se pudo registrar el préstamo, intenta más tarde." );
 
@@ -90,11 +100,21 @@ namespace LibreriaApi.Services {
 		private async Task SetBorrowBooks( int borrowId, IEnumerable<int> bookIds, MySqlTransaction transaction ) {
 			bookIds = bookIds.Distinct().Where( x => x > 0 ); // Limpiar lista
 
+			if( !bookIds.Any() ) throw new Exception( "Debes asignar al menos un libro con un id válido." );
+
 			using var addBooksCommand = new MySqlCommand( INSERT_BORROW_BOOKS_COMMAND,
 				_connection, transaction );
 
 			// Agregar géneros
 			foreach( var bookId in bookIds ) {
+				var book = await _booksService.FindByIdAsync( bookId );
+
+				if( book is null )
+					throw new Exception( "El libro no está disponible, intenta de nuevo" );
+
+				if( !book.Available )
+					throw new Exception( $"El libro {book.Title} ya ha sido prestado." );
+
 				AddBorrowIdParam( addBooksCommand, borrowId );
 				AddBookIdParam( addBooksCommand, bookId );
 

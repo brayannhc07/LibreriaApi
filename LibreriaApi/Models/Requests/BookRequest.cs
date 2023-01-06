@@ -34,7 +34,7 @@ namespace LibreriaApi.Models.Requests
         [MaxLength(500, ErrorMessage = MAX_LENGTH_ERROR_MESSAGE)]
         public string? ImageUrl { get; set; }
         [DisplayName("Géneros")]
-        [Required(ErrorMessage = REQUIRED_ERROR_MESSAGE)]
+        [Required(ErrorMessage = "Es necesario asignar los géneros.")]
         [MinLength(1, ErrorMessage = "Necesitas asignar al menos un género.")]
         public IEnumerable<int>? Genres { get; set; }
     }
