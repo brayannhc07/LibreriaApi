@@ -12,6 +12,7 @@ namespace LibreriaApi.Services {
 		private readonly IMembersService _membersService;
 		private readonly IEmployeesService _employeesService;
 		private readonly IBooksService _booksService;
+		private readonly IDevolutionsService _devolutionsService;
 		private const string SELECT_COMMAND = "SELECT * FROM prestamos ORDER BY id_prestamo desc";
 		private const string INSERT_COMMAND = "INSERT INTO prestamos(id_socio, id_empleado, fecha_lim_entrega) VALUES(@memberId, @employeeId, @limitDate)";
 		private const string DELETE_COMMAND = "DELETE FROM prestamos WHERE id_prestamo = @borrowId";
@@ -20,11 +21,12 @@ namespace LibreriaApi.Services {
 		private const string INSERT_BORROW_BOOKS_COMMAND = "INSERT INTO prestamo_libros(id_prestamo, id_libro) VALUES(@borrowId, @bookId)";
 
 		public BorrowsService( MySqlConnection connection, IMembersService membersService,
-			IEmployeesService employeesService, IBooksService booksService ) {
+			IEmployeesService employeesService, IBooksService booksService, IDevolutionsService devolutionsService ) {
 			_connection = connection;
 			_membersService = membersService;
 			_employeesService = employeesService;
 			_booksService = booksService;
+			_devolutionsService = devolutionsService;
 		}
 
 		public async Task<BorrowResponse?> FindByIdAsync( int borrowId ) {
@@ -97,6 +99,19 @@ namespace LibreriaApi.Services {
 			return borrow;
 		}
 
+		public async Task<BorrowResponse?> DevolutionAsync( int borrowId ) {
+			var borrow = await FindByIdAsync( borrowId );
+
+			if( borrow is null ) return null;
+
+			if( borrow.Devolution is not null ) 
+				throw new Exception( "Los libros de este préstamo ya se han devuelto." );
+
+			borrow.Devolution = await _devolutionsService.RegisterAsync( borrowId );
+
+			return borrow;
+		}
+
 		private async Task SetBorrowBooks( int borrowId, IEnumerable<int> bookIds, MySqlTransaction transaction ) {
 			bookIds = bookIds.Distinct().Where( x => x > 0 ); // Limpiar lista
 
@@ -132,7 +147,8 @@ namespace LibreriaApi.Services {
 				employee: ( await _employeesService.FindByIdAsync( await reader.GetFieldValueAsync<int>( "id_empleado" ) ) )!,
 				borrowDate: await reader.GetFieldValueAsync<DateTime>( "fecha_prestamo" ),
 				limitDate: await reader.GetFieldValueAsync<DateTime>( "fecha_lim_entrega" ),
-				books: await _booksService.GetByBorrowIdAsync( id )
+				books: await _booksService.GetByBorrowIdAsync( id ),
+				devolution: await _devolutionsService.FindByBorrowIdAsync( id )
 			);
 		}
 

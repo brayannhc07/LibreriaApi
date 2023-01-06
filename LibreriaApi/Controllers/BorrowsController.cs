@@ -49,6 +49,20 @@ namespace LibreriaApi.Controllers {
 			}
 		}
 
+		[HttpPost( "{id:int}/devolution" )]
+		public async Task<ActionResult<Response<BorrowResponse>>> Devolution( int id ) {
+			Response<BorrowResponse> response = new();
+			try {
+				var borrow = await _borrowsService.DevolutionAsync( id );
+
+				if( borrow is null ) return GetNotFoundStatus( response );
+
+				return Ok( response.Commit( "Devolución registrada correctamente.", borrow ) );
+			} catch( Exception ex ) {
+				return GetServerErrorStatus( response, ex );
+			}
+		}
+
 		[HttpDelete( "{id:int}" )]
 		public async Task<ActionResult<Response<BorrowResponse>>> Delete( int id ) {
 			Response<BorrowResponse> response = new();
