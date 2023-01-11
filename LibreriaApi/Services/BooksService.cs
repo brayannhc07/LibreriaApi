@@ -13,16 +13,16 @@ namespace LibreriaApi.Services {
 		private readonly MySqlConnection _connection;
 		private readonly IGenresService _genresService;
 
-		private const string SELECT_COMMAND = "SELECT * FROM libros ORDER BY titulo";
-		private const string INSERT_COMMAND = "INSERT INTO libros(isbn , titulo, autor , sinopsis, editorial , numero_pag, imagen_url) VALUES(@isbn ,@title, @author, @synopsis, @editorial, @pages, @imageUrl)";
-		private const string UPDATE_COMMAND = "UPDATE libros SET isbn = @isbn , titulo = @title, autor = @author, sinopsis = @synopsis, editorial = @editorial, numero_pag = @pages, imagen_url = @imageUrl WHERE id_libro = @bookId";
-		private const string DELETE_COMMAND = "DELETE FROM libros WHERE id_libro = @bookId";
+		private const string SELECT_COMMAND = "SELECT * FROM libros_view";
+		private const string INSERT_COMMAND = "CALL crearLibro(@isbn ,@title, @author, @synopsis, @editorial, @pages, @imageUrl)";
+		private const string UPDATE_COMMAND = "CALL editarLibro(@isbn, @title, @author, @synopsis, @editorial, @pages, @imageUrl, @bookId)";
+		private const string DELETE_COMMAND = "CALL eliminarLibro(@bookId)";
 
-		private const string SELECT_BY_ID_COMMAND = "SELECT * FROM libros WHERE id_libro = @bookId";
-		private const string SELECT_BY_BORROW_ID_COMMAND = "SELECT l.*, pl.id_libro FROM prestamo_libros pl, libros l WHERE pl.id_libro = l.id_libro AND id_prestamo = @borrowId ORDER BY l.titulo";
+		private const string SELECT_BY_ID_COMMAND = "CALL buscarLibroPorId(@bookId)";
+		private const string SELECT_BY_BORROW_ID_COMMAND = "CALL buscarLibrosPorIdPrestamo(@borrowId)";
 
-		private const string DELETE_BOOK_GENRES_COMMAND = "DELETE FROM libro_generos WHERE id_libro = @bookId AND id_genero = @genreId";
-		private const string INSERT_BOOK_GENRES_COMMAND = "INSERT INTO libro_generos(id_genero, id_libro) VALUES(@genreId, @bookId)";
+		private const string DELETE_BOOK_GENRES_COMMAND = "CALL eliminarLibroGenero(@bookId, @genreId)";
+		private const string INSERT_BOOK_GENRES_COMMAND = "CALL crearLibroGenero(@bookId, @genreId)";
 
 		public BooksService( MySqlConnection connection, IGenresService genresService ) {
 			_connection = connection;
@@ -78,10 +78,17 @@ namespace LibreriaApi.Services {
 			AddRequestParams( command, request );
 			int bookId;
 			try {
-				if( await command.ExecuteNonQueryAsync() < 1 )
+
+				using var reader = await command.ExecuteReaderAsync();
+
+				if( !reader.HasRows )
 					throw new Exception( "No se pudo registrar el socio, intenta más tarde." );
 
-				bookId = ( int )command.LastInsertedId;
+				await reader.ReadAsync();
+
+				bookId = await GetIdFromReader( reader );
+
+				await reader.DisposeAsync();
 
 				await ManageBookGenres( bookId, request.Genres!, transaction );
 
@@ -163,6 +170,10 @@ namespace LibreriaApi.Services {
 			);
 		}
 
+		private static async Task<int> GetIdFromReader( DbDataReader reader ) {
+			return ( int )await reader.GetFieldValueAsync<ulong>( 0 );
+		}
+
 		private static void AddRequestParams( MySqlCommand command, BookRequest request ) {
 			command.Parameters.AddWithValue( "@isbn", request.Isbn );
 			command.Parameters.AddWithValue( "@title", request.Title );
@@ -175,6 +186,8 @@ namespace LibreriaApi.Services {
 
 		private async Task ManageBookGenres( int bookId, IEnumerable<int> genreIds, MySqlTransaction transaction ) {
 			genreIds = genreIds.Distinct().Where( x => x > 0 ); // Limpiar lista
+
+			if( !genreIds.Any() ) throw new Exception( "Debes asignar al menos un género con un id válido." );
 
 			var currentGenreIds = ( await _genresService.GetByBookIdAsync( bookId ) ).Select( x => x.Id );
 			var insertGenreIds = genreIds.Except( currentGenreIds );

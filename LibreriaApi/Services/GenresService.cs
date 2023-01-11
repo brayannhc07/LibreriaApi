@@ -5,19 +5,18 @@ using MySql.Data.MySqlClient;
 using System.Data;
 using System.Data.Common;
 
-namespace LibreriaApi.Services
-{
-    public class GenresService: IGenresService {
+namespace LibreriaApi.Services {
+	public class GenresService: IGenresService {
 		private readonly MySqlConnection _connection;
 
-		private const string SELECT_COMMAND = "SELECT * FROM generos ORDER BY genero";
-		private const string INSERT_COMMAND = "INSERT INTO generos(genero, imagen_url) VALUES(@name, @imageUrl)";
-		private const string UPDATE_COMMAND = "UPDATE generos SET genero = @name, imagen_url = @imageUrl WHERE id_genero = @genreId";
-		private const string DELETE_COMMAND = "DELETE FROM generos WHERE id_genero = @genreId";
+		private const string SELECT_COMMAND = "SELECT * FROM generos_view";
+		private const string INSERT_COMMAND = "CALL crearGenero(@name, @imageUrl)";
+		private const string UPDATE_COMMAND = "CALL editarGenero(@name, @imageUrl, @genreId)";
+		private const string DELETE_COMMAND = "CALL eliminarGenero(@genreId)";
 
-		private const string SELECT_BY_ID_COMMAND = "SELECT * FROM generos WHERE id_genero = @genreId";
-		private const string SELECT_BY_BOOK_ID_COMMAND = "SELECT g.*, lg.id_libro FROM libro_generos lg, generos g WHERE lg.id_genero = g.id_genero AND id_libro = @bookId ORDER BY genero";
-	
+		private const string SELECT_BY_ID_COMMAND = "CALL buscarGeneroPorId(@genreId)";
+		private const string SELECT_BY_BOOK_ID_COMMAND = "CALL buscarGenerosPorIdLibro(@bookId)";
+
 		public GenresService( MySqlConnection connection ) {
 			_connection = connection;
 		}
@@ -69,9 +68,14 @@ namespace LibreriaApi.Services
 			using var command = new MySqlCommand( INSERT_COMMAND, _connection );
 			AddRequestParams( command, request );
 
-			await command.ExecuteNonQueryAsync();
+			using var reader = await command.ExecuteReaderAsync();
 
-			return GetResponseByRequest( ( int )command.LastInsertedId, request );
+			if( !reader.HasRows )
+				throw new Exception( "No se pudo registrar el género, intenta más tarde." );
+
+			await reader.ReadAsync();
+
+			return GetResponseByRequest( await GetIdFromReader( reader ), request );
 		}
 
 		public async Task<GenreResponse?> UpdateAsync( GenreRequest request, int genreId ) {
@@ -105,6 +109,9 @@ namespace LibreriaApi.Services
 			return genre;
 		}
 
+		private static async Task<int> GetIdFromReader( DbDataReader reader ) {
+			return ( int )await reader.GetFieldValueAsync<ulong>( 0 );
+		}
 
 		private static async Task<GenreResponse> GetResponseFromReader( DbDataReader reader ) {
 			return new GenreResponse(

@@ -13,12 +13,12 @@ namespace LibreriaApi.Services {
 		private readonly IEmployeesService _employeesService;
 		private readonly IBooksService _booksService;
 		private readonly IDevolutionsService _devolutionsService;
-		private const string SELECT_COMMAND = "SELECT * FROM prestamos ORDER BY id_prestamo desc";
-		private const string INSERT_COMMAND = "INSERT INTO prestamos(id_socio, id_empleado, fecha_lim_entrega) VALUES(@memberId, @employeeId, @limitDate)";
-		private const string DELETE_COMMAND = "DELETE FROM prestamos WHERE id_prestamo = @borrowId";
+		private const string SELECT_COMMAND = "SELECT * FROM prestamos_view";
+		private const string INSERT_COMMAND = "CALL crearPrestamo(@memberId, @employeeId, @limitDate)";
+		private const string DELETE_COMMAND = "CALL eliminarPrestamo(@borrowId)";
 
-		private const string SELECT_BY_ID_COMMAND = "SELECT * FROM prestamos WHERE id_prestamo = @borrowId";
-		private const string INSERT_BORROW_BOOKS_COMMAND = "INSERT INTO prestamo_libros(id_prestamo, id_libro) VALUES(@borrowId, @bookId)";
+		private const string SELECT_BY_ID_COMMAND = "CALL buscarPrestamoPorId(@borrowId)";
+		private const string INSERT_BORROW_BOOKS_COMMAND = "CALL crearPrestamoLibro(@borrowId, @bookId)";
 
 		public BorrowsService( MySqlConnection connection, IMembersService membersService,
 			IEmployeesService employeesService, IBooksService booksService, IDevolutionsService devolutionsService ) {
@@ -71,10 +71,16 @@ namespace LibreriaApi.Services {
 				if( employee is null )
 					throw new Exception( "El empleado no se pudo encontrar." );
 
-				if( await command.ExecuteNonQueryAsync() < 1 )
+				using var reader = await command.ExecuteReaderAsync();
+
+				if( !reader.HasRows )
 					throw new Exception( "No se pudo registrar el préstamo, intenta más tarde." );
 
-				borrowId = ( int )command.LastInsertedId;
+				await reader.ReadAsync();
+
+				borrowId = await GetIdFromReader( reader );
+
+				await reader.DisposeAsync();
 
 				await SetBorrowBooks( borrowId, request.Books!, transaction );
 
@@ -104,7 +110,7 @@ namespace LibreriaApi.Services {
 
 			if( borrow is null ) return null;
 
-			if( borrow.Devolution is not null ) 
+			if( borrow.Devolution is not null )
 				throw new Exception( "Los libros de este préstamo ya se han devuelto." );
 
 			borrow.Devolution = await _devolutionsService.RegisterAsync( borrowId );
@@ -137,6 +143,10 @@ namespace LibreriaApi.Services {
 
 				addBooksCommand.Parameters.Clear();
 			}
+		}
+
+		private static async Task<int> GetIdFromReader( DbDataReader reader ) {
+			return ( int )await reader.GetFieldValueAsync<ulong>( 0 );
 		}
 
 		private async Task<BorrowResponse> GetResponseFromReader( DbDataReader reader ) {

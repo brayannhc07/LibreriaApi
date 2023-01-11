@@ -5,17 +5,16 @@ using MySql.Data.MySqlClient;
 using System.Data;
 using System.Data.Common;
 
-namespace LibreriaApi.Services
-{
-    public class EmployeesService: IEmployeesService {
+namespace LibreriaApi.Services {
+	public class EmployeesService: IEmployeesService {
 		private readonly MySqlConnection _connection;
 
-		private const string SELECT_COMMAND = "SELECT * FROM empleados ORDER BY nombre DESC";
-		private const string INSERT_COMMAND = "INSERT INTO empleados(nombre, puesto, direccion, telefono, correo, fecha_nacimiento, imagen_url) VALUES(@name, @role, @address, @phone, @email, @birthday, @imageUrl)";
-		private const string UPDATE_COMMAND = "UPDATE empleados SET nombre = @name, puesto = @role, direccion = @address, telefono = @phone, correo = @email, fecha_nacimiento = @birthday, imagen_url = @imageUrl WHERE id_empleado = @employeeId";
-		private const string DELETE_COMMAND = "DELETE FROM empleados WHERE id_empleado = @employeeId";
+		private const string SELECT_COMMAND = "SELECT * FROM empleados_view";
+		private const string INSERT_COMMAND = "CALL crearEmpleado(@name, @role, @address, @phone, @email, @birthday, @imageUrl)";
+		private const string UPDATE_COMMAND = "CALL editarEmpleado(@name, @role, @address, @phone, @email, @birthday, @imageUrl, @employeeId)";
+		private const string DELETE_COMMAND = "CALL eliminarEmpleado(@employeeId)";
 
-		private const string SELECT_BY_ID_COMMAND = "SELECT * FROM empleados WHERE id_empleado = @employeeId";
+		private const string SELECT_BY_ID_COMMAND = "CALL buscarEmpleadoPorId(@employeeId)";
 
 		public EmployeesService( MySqlConnection connection ) {
 			_connection = connection;
@@ -51,10 +50,14 @@ namespace LibreriaApi.Services
 			using var command = new MySqlCommand( INSERT_COMMAND, _connection );
 			AddRequestParams( command, request );
 
-			if( await command.ExecuteNonQueryAsync() < 1 )
-				throw new Exception( "No se pudo registrar al empleado, intenta más tarde." );
+			using var reader = await command.ExecuteReaderAsync();
 
-			return GetResponseFromRequest( ( int )command.LastInsertedId, request );
+			if( !reader.HasRows )
+				throw new Exception( "No se pudo registrar al empleado, intenta más tarde." );
+			
+			await reader.ReadAsync();
+
+			return GetResponseFromRequest( await GetIdFromReader( reader ), request );
 		}
 
 		public async Task<EmployeeResponse?> UpdateAsync( EmployeeRequest request, int employeeId ) {
@@ -84,13 +87,16 @@ namespace LibreriaApi.Services
 			return employee;
 		}
 
+		private static async Task<int> GetIdFromReader( DbDataReader reader ) {
+			return ( int )await reader.GetFieldValueAsync<ulong>( 0 );
+		}
 
 		private static async Task<EmployeeResponse> GetResponseFromReader( DbDataReader reader ) {
 			return new EmployeeResponse(
 				id: await reader.GetFieldValueAsync<int>( "id_empleado" ),
 				name: await reader.GetFieldValueAsync<string>( "nombre" ),
 				role: await reader.GetFieldValueAsync<string>( "puesto" ),
-				address: !await reader.IsDBNullAsync("direccion") ? await reader.GetFieldValueAsync<string?>( "direccion" ) : null,
+				address: !await reader.IsDBNullAsync( "direccion" ) ? await reader.GetFieldValueAsync<string?>( "direccion" ) : null,
 				phoneNumber: await reader.GetFieldValueAsync<string>( "telefono" ),
 				email: await reader.GetFieldValueAsync<string>( "correo" ),
 				birthday: !await reader.IsDBNullAsync( "fecha_nacimiento" ) ? await reader.GetFieldValueAsync<DateTime?>( "fecha_nacimiento" ) : null,

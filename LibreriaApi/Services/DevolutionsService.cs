@@ -5,16 +5,17 @@ using MySql.Data.MySqlClient;
 using Org.BouncyCastle.Asn1.Ocsp;
 using System.Data;
 using System.Data.Common;
+using System.Xml;
 using static System.Reflection.Metadata.BlobBuilder;
 
 namespace LibreriaApi.Services {
 	public class DevolutionsService: IDevolutionsService {
 		private readonly MySqlConnection _connection;
 
-		private const string INSERT_COMMAND = "INSERT INTO entregas(id_prestamo) VALUES(@borrowId);";
+		private const string INSERT_COMMAND = "CALL crearDevolucion(@borrowId);";
 
-		private const string SELECT_BY_ID_COMMAND = "SELECT * FROM entregas WHERE id_entrega = @devolutionId;";
-		private const string SELECT_BY_BORROW_ID_COMMAND = "SELECT e.* FROM entregas e, prestamos p WHERE e.id_prestamo = p.id_prestamo AND e.id_prestamo = @borrowId;";
+		private const string SELECT_BY_ID_COMMAND = "CALL buscarEntregaPorId(@devolutionId)";
+		private const string SELECT_BY_BORROW_ID_COMMAND = "CALL buscarEntregaPorIdPrestamo(@borrowId)";
 
 		public DevolutionsService( MySqlConnection connection ) {
 			_connection = connection;
@@ -50,12 +51,22 @@ namespace LibreriaApi.Services {
 			using var command = new MySqlCommand( INSERT_COMMAND, _connection );
 			AddBorrowIdParam( command, borrowId );
 
-			if( await command.ExecuteNonQueryAsync() < 1 )
+			using var reader = await command.ExecuteReaderAsync();
+
+			if( !reader.HasRows )
 				throw new Exception( "No se pudo registrar la devolución, intenta más tarde." );
 
-			int devolutionId = ( int )command.LastInsertedId;
+			await reader.ReadAsync();
+
+			int devolutionId = await GetIdFromReader( reader );
+
+			await reader.DisposeAsync();
 
 			return ( await FindByIdAsync( devolutionId ) )!;
+		}
+
+		private static async Task<int> GetIdFromReader( DbDataReader reader ) {
+			return ( int )await reader.GetFieldValueAsync<ulong>( 0 );
 		}
 
 		private static async Task<DevolutionResponse> GetResponseFromReader( DbDataReader reader ) {

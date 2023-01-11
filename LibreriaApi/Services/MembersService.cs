@@ -5,17 +5,16 @@ using MySql.Data.MySqlClient;
 using System.Data;
 using System.Data.Common;
 
-namespace LibreriaApi.Services
-{
-    public class MembersService: IMembersService {
+namespace LibreriaApi.Services {
+	public class MembersService: IMembersService {
 		private readonly MySqlConnection _connection;
 
-		private const string SELECT_COMMAND = "SELECT * FROM socios ORDER BY nombre DESC";
-		private const string INSERT_COMMAND = "INSERT INTO socios(nombre, direccion, telefono, correo, fecha_nacimiento, imagen_url) VALUES(@name, @address, @phone, @email, @birthday, @imageUrl)";
-		private const string UPDATE_COMMAND = "UPDATE socios SET nombre = @name, direccion = @address, telefono = @phone, correo = @email, fecha_nacimiento = @birthday, imagen_url = @imageUrl WHERE id_socio = @memberId";
-		private const string DELETE_COMMAND = "DELETE FROM socios WHERE id_socio = @memberId";
+		private const string SELECT_COMMAND = "SELECT * FROM socios_view";
+		private const string INSERT_COMMAND = "CALL crearSocio(@name, @address, @phone, @email, @birthday, @imageUrl)";
+		private const string UPDATE_COMMAND = "CALL editarSocio(@name, @address, @phone, @email, @birthday, @imageUrl, @memberId)";
+		private const string DELETE_COMMAND = "CALL eliminarSocio(@memberId)";
 
-		private const string SELECT_BY_ID_COMMAND = "SELECT * FROM socios WHERE id_socio = @memberId";
+		private const string SELECT_BY_ID_COMMAND = "CALL buscarSocioPorId(@memberId)";
 
 		public MembersService( MySqlConnection connection ) {
 			_connection = connection;
@@ -51,10 +50,14 @@ namespace LibreriaApi.Services
 			using var command = new MySqlCommand( INSERT_COMMAND, _connection );
 			AddRequestParams( command, request );
 
-			if( await command.ExecuteNonQueryAsync() < 1 )
+			using var reader = await command.ExecuteReaderAsync();
+
+			if( !reader.HasRows )
 				throw new Exception( "No se pudo registrar al socio, intenta más tarde." );
 
-			return GetResponseFromRequest( ( int )command.LastInsertedId, request );
+			await reader.ReadAsync();
+
+			return GetResponseFromRequest( await GetIdFromReader(reader), request );
 		}
 
 		public async Task<MemberResponse?> UpdateAsync( MemberRequest request, int memberId ) {
@@ -84,15 +87,18 @@ namespace LibreriaApi.Services
 			return member;
 		}
 
+		private static async Task<int> GetIdFromReader( DbDataReader reader ) {
+			return ( int )await reader.GetFieldValueAsync<ulong>( 0 );
+		}
 
 		private static async Task<MemberResponse> GetResponseFromReader( DbDataReader reader ) {
 			return new MemberResponse(
 				id: await reader.GetFieldValueAsync<int>( "id_socio" ),
 				name: await reader.GetFieldValueAsync<string>( "nombre" ),
-				address: !await reader.IsDBNullAsync("direccion")?  await reader.GetFieldValueAsync<string?>( "direccion" ): null,
+				address: !await reader.IsDBNullAsync( "direccion" ) ? await reader.GetFieldValueAsync<string?>( "direccion" ) : null,
 				phoneNumber: await reader.GetFieldValueAsync<string>( "telefono" ),
-				email: !await reader.IsDBNullAsync("correo")? await reader.GetFieldValueAsync<string?>( "correo" ) : null,
-				birthday: !await reader.IsDBNullAsync("fecha_nacimiento") ? await reader.GetFieldValueAsync<DateTime?>( "fecha_nacimiento" ) : null,
+				email: !await reader.IsDBNullAsync( "correo" ) ? await reader.GetFieldValueAsync<string?>( "correo" ) : null,
+				birthday: !await reader.IsDBNullAsync( "fecha_nacimiento" ) ? await reader.GetFieldValueAsync<DateTime?>( "fecha_nacimiento" ) : null,
 				activeMembership: await reader.GetFieldValueAsync<bool>( "estado_membresia" ),
 				imageUrl: await reader.GetFieldValueAsync<string>( "imagen_url" ) ?? string.Empty
 			);
