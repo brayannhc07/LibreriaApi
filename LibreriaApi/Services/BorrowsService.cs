@@ -12,21 +12,20 @@ namespace LibreriaApi.Services {
 		private readonly IMembersService _membersService;
 		private readonly IEmployeesService _employeesService;
 		private readonly IBooksService _booksService;
-		private readonly IDevolutionsService _devolutionsService;
 		private const string SELECT_COMMAND = "SELECT * FROM prestamos_view";
 		private const string INSERT_COMMAND = "CALL crearPrestamo(@memberId, @employeeId, @limitDate)";
 		private const string DELETE_COMMAND = "CALL eliminarPrestamo(@borrowId)";
+		private const string DEVOLUTION_COMMAND = "CALL realizarDevolucion(@borrowId);";
 
 		private const string SELECT_BY_ID_COMMAND = "CALL buscarPrestamoPorId(@borrowId)";
 		private const string INSERT_BORROW_BOOKS_COMMAND = "CALL crearPrestamoLibro(@borrowId, @bookId)";
 
 		public BorrowsService( MySqlConnection connection, IMembersService membersService,
-			IEmployeesService employeesService, IBooksService booksService, IDevolutionsService devolutionsService ) {
+			IEmployeesService employeesService, IBooksService booksService) {
 			_connection = connection;
 			_membersService = membersService;
 			_employeesService = employeesService;
 			_booksService = booksService;
-			_devolutionsService = devolutionsService;
 		}
 
 		public async Task<BorrowResponse?> FindByIdAsync( int borrowId ) {
@@ -66,6 +65,9 @@ namespace LibreriaApi.Services {
 				if( member is null )
 					throw new Exception( "El socio no se pudo encontrar." );
 
+				if( !member.ActiveMembership )
+					throw new Exception( "El socio tiene un préstamo activo y no se le pueden prestar más libros." );
+
 				var employee = await _employeesService.FindByIdAsync( request.EmployeeId ?? 0 );
 
 				if( employee is null )
@@ -92,30 +94,25 @@ namespace LibreriaApi.Services {
 			return ( await FindByIdAsync( borrowId ) )!;
 		}
 
-		public async Task<BorrowResponse?> UnregisterAsync( int borrowId ) {
-			var borrow = await FindByIdAsync( borrowId );
-			if( borrow is null ) return null;
-
-			using var command = new MySqlCommand( DELETE_COMMAND, _connection );
-			AddBorrowIdParam( command, borrowId );
-
-			if( await command.ExecuteNonQueryAsync() < 1 )
-				throw new Exception( "No se pudo cancelar el préstamo, intenta más tarde." );
-
-			return borrow;
-		}
-
 		public async Task<BorrowResponse?> DevolutionAsync( int borrowId ) {
 			var borrow = await FindByIdAsync( borrowId );
 
 			if( borrow is null ) return null;
 
-			if( borrow.Devolution is not null )
+			if( borrow.DevolutionTime is not null )
 				throw new Exception( "Los libros de este préstamo ya se han devuelto." );
 
-			borrow.Devolution = await _devolutionsService.RegisterAsync( borrowId );
+			using var command = new MySqlCommand( DEVOLUTION_COMMAND, _connection );
+			AddBorrowIdParam( command, borrowId );
 
-			return borrow;
+			using var reader = await command.ExecuteReaderAsync();
+
+			if( !reader.HasRows )
+				throw new Exception( "No se pudo registrar la devolución, intenta más tarde." );
+
+			await reader.DisposeAsync();
+
+			return await FindByIdAsync( borrowId )!;
 		}
 
 		private async Task SetBorrowBooks( int borrowId, IEnumerable<int> bookIds, MySqlTransaction transaction ) {
@@ -134,7 +131,7 @@ namespace LibreriaApi.Services {
 					throw new Exception( "El libro no está disponible, intenta de nuevo" );
 
 				if( !book.Available )
-					throw new Exception( $"El libro {book.Title} ya ha sido prestado." );
+					throw new Exception( $"No hay copias de {book.Title} disponibles para préstamos." );
 
 				AddBorrowIdParam( addBooksCommand, borrowId );
 				AddBookIdParam( addBooksCommand, bookId );
@@ -158,7 +155,7 @@ namespace LibreriaApi.Services {
 				borrowDate: await reader.GetFieldValueAsync<DateTime>( "fecha_prestamo" ),
 				limitDate: await reader.GetFieldValueAsync<DateTime>( "fecha_lim_entrega" ),
 				books: await _booksService.GetByBorrowIdAsync( id ),
-				devolution: await _devolutionsService.FindByBorrowIdAsync( id )
+				devolutionTime: !await reader.IsDBNullAsync( "fecha_entregado" ) ? await reader.GetFieldValueAsync<DateTime?>( "fecha_entregado" ) : null
 			);
 		}
 

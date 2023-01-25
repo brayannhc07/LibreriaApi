@@ -5,8 +5,8 @@
     /// </summary>
     public class BookResponse
     {
-        public BookResponse(int id, int isbn, string title, string author, string synopsis, string editorial,
-            int pages, string imageUrl, bool available, IEnumerable<GenreResponse> genres)
+        public BookResponse( int id, int isbn, string title, string author, string synopsis, string editorial,
+            int pages, string imageUrl, int count, IEnumerable<GenreResponse> genres)
         {
             Id = id;
             Title = title;
@@ -16,7 +16,8 @@
             Editorial = editorial;
             Pages = pages;
             Isbn = isbn;
-            Available = available;
+            Count = count;
+            Available = count > 0;
             Genres = genres;
         }
 
@@ -29,6 +30,7 @@
         public string Synopsis { get; private set; }
         public string Editorial { get; private set; }
         public bool Available { get; private set; }
+        public int Count { get; private set; }
         public IEnumerable<GenreResponse> Genres { get; private set; }
 
     }

@@ -33,6 +33,9 @@ namespace LibreriaApi.Models.Requests
         [DisplayName("Url de la portada")]
         [MaxLength(500, ErrorMessage = MAX_LENGTH_ERROR_MESSAGE)]
         public string? ImageUrl { get; set; }
+        [Required(ErrorMessage = REQUIRED_ERROR_MESSAGE)]
+		[Range( 1, int.MaxValue, ErrorMessage = RANGE_ERROR_MESSAGE )]
+		public int? Count { get; set; }
         [DisplayName("Géneros")]
         [Required(ErrorMessage = "Es necesario asignar los géneros.")]
         [MinLength(1, ErrorMessage = "Necesitas asignar al menos un género.")]

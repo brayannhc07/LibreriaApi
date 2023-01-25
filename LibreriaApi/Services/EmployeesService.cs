@@ -71,7 +71,7 @@ namespace LibreriaApi.Services {
 			if( await command.ExecuteNonQueryAsync() < 1 )
 				throw new Exception( "No se pudo editar el empleado, intenta más tarde." );
 
-			return GetResponseFromRequest( employeeId, request, employee.Active );
+			return GetResponseFromRequest( employeeId, request );
 		}
 
 		public async Task<EmployeeResponse?> DeleteAsync( int employeeId ) {
@@ -100,12 +100,11 @@ namespace LibreriaApi.Services {
 				phoneNumber: await reader.GetFieldValueAsync<string>( "telefono" ),
 				email: await reader.GetFieldValueAsync<string>( "correo" ),
 				birthday: !await reader.IsDBNullAsync( "fecha_nacimiento" ) ? await reader.GetFieldValueAsync<DateTime?>( "fecha_nacimiento" ) : null,
-				active: await reader.GetFieldValueAsync<bool>( "estado_emp" ),
 				imageUrl: await reader.GetFieldValueAsync<string>( "imagen_url" )
 			);
 		}
 
-		private static EmployeeResponse GetResponseFromRequest( int id, EmployeeRequest request, bool active = true ) {
+		private static EmployeeResponse GetResponseFromRequest( int id, EmployeeRequest request ) {
 			return new EmployeeResponse(
 				id: id,
 				name: request.Name!,
@@ -114,7 +113,6 @@ namespace LibreriaApi.Services {
 				phoneNumber: request.PhoneNumber!,
 				email: request.Email!,
 				birthday: request.Birthday,
-				active: active,
 				imageUrl: request.ImageUrl ?? ""
 			);
 		}

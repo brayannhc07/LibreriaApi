@@ -14,8 +14,8 @@ namespace LibreriaApi.Services {
 		private readonly IGenresService _genresService;
 
 		private const string SELECT_COMMAND = "SELECT * FROM libros_view";
-		private const string INSERT_COMMAND = "CALL crearLibro(@isbn ,@title, @author, @synopsis, @editorial, @pages, @imageUrl)";
-		private const string UPDATE_COMMAND = "CALL editarLibro(@isbn, @title, @author, @synopsis, @editorial, @pages, @imageUrl, @bookId)";
+		private const string INSERT_COMMAND = "CALL crearLibro(@isbn ,@title, @author, @synopsis, @editorial, @pages, @imageUrl, @count)";
+		private const string UPDATE_COMMAND = "CALL editarLibro(@isbn, @title, @author, @synopsis, @editorial, @pages, @imageUrl, @bookId, @count)";
 		private const string DELETE_COMMAND = "CALL eliminarLibro(@bookId)";
 
 		private const string SELECT_BY_ID_COMMAND = "CALL buscarLibroPorId(@bookId)";
@@ -122,7 +122,7 @@ namespace LibreriaApi.Services {
 			}
 
 
-			return await GetResponseFromRequest( bookId, request, book.Available );
+			return await GetResponseFromRequest( bookId, request );
 		}
 
 		public async Task<BookResponse?> DeleteAsync( int bookId ) {
@@ -148,14 +148,13 @@ namespace LibreriaApi.Services {
 				synopsis: await reader.GetFieldValueAsync<string>( "sinopsis" ),
 				editorial: await reader.GetFieldValueAsync<string>( "editorial" ),
 				pages: await reader.GetFieldValueAsync<int>( "numero_pag" ),
+				count: await reader.GetFieldValueAsync<int>( "existencias" ),
 				imageUrl: await reader.GetFieldValueAsync<string>( "imagen_url" ),
-				available: await reader.GetFieldValueAsync<bool>( "disponible" ),
 				genres: await _genresService.GetByBookIdAsync( id )
 			);
 		}
 
-		private async Task<BookResponse> GetResponseFromRequest( int id, BookRequest request,
-			bool available = true ) {
+		private async Task<BookResponse> GetResponseFromRequest( int id, BookRequest request) {
 			return new BookResponse(
 				id: id,
 				isbn: request.Isbn ?? 0,
@@ -165,7 +164,7 @@ namespace LibreriaApi.Services {
 				editorial: request.Editorial!,
 				pages: request.Pages ?? 0,
 				imageUrl: request.ImageUrl ?? string.Empty,
-				available: available,
+				count: request.Count ?? 0,
 				genres: await _genresService.GetByBookIdAsync( id )
 			);
 		}
@@ -181,6 +180,7 @@ namespace LibreriaApi.Services {
 			command.Parameters.AddWithValue( "@synopsis", request.Synopsis );
 			command.Parameters.AddWithValue( "@editorial", request.Editorial );
 			command.Parameters.AddWithValue( "@pages", request.Pages );
+			command.Parameters.AddWithValue( "@count", request.Count);
 			command.Parameters.AddWithValue( "@imageUrl", request.ImageUrl ?? string.Empty );
 		}
 

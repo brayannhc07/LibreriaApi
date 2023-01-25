@@ -63,20 +63,6 @@ namespace LibreriaApi.Controllers {
 			}
 		}
 
-		[HttpDelete( "{id:int}" )]
-		public async Task<ActionResult<Response<BorrowResponse>>> Delete( int id ) {
-			Response<BorrowResponse> response = new();
-			try {
-				var borrow = await _borrowsService.UnregisterAsync( id );
-
-				if( borrow is null ) return GetNotFoundStatus( response );
-
-				return Ok( response.Commit( "Préstamo cancelado correctamente.", borrow ) );
-			} catch( Exception ex ) {
-				return GetServerErrorStatus( response, ex );
-			}
-		}
-
 		private ActionResult GetNotFoundStatus<T>( Response<T> response ) {
 			return NotFound( response.Defeat( "Préstamo no encontrado." ) );
 		}

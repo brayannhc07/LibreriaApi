@@ -2,14 +2,14 @@
 	public class BorrowResponse {
 		public BorrowResponse( int id, MemberResponse member, EmployeeResponse employee,
 			DateTime borrowDate, DateTime limitDate, IEnumerable<BookResponse> books,
-			DevolutionResponse? devolution ) {
+			DateTime? devolutionTime) {
 			Id = id;
 			Member = member;
 			Employee = employee;
 			BorrowDate = borrowDate;
 			LimitDate = limitDate;
 			Books = books;
-			Devolution = devolution;
+			DevolutionTime = devolutionTime;
 		}
 
 		public int Id { get; private set; }
@@ -17,7 +17,7 @@
 		public EmployeeResponse Employee { get; private set; }
 		public DateTime BorrowDate { get; private set; }
 		public DateTime LimitDate { get; private set; }
+		public DateTime? DevolutionTime { get; private set; }
 		public IEnumerable<BookResponse> Books { get; private set; }
-		public DevolutionResponse? Devolution { get; set; }
 	}
 }

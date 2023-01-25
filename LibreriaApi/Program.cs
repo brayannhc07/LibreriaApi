@@ -37,7 +37,6 @@ builder.Services.AddScoped<IMembersService, MembersService>();
 builder.Services.AddScoped<IBooksService, BooksService>();
 builder.Services.AddScoped<IEmployeesService, EmployeesService>();
 builder.Services.AddScoped<IBorrowsService, BorrowsService>();
-builder.Services.AddScoped<IDevolutionsService, DevolutionsService>();
 
 var app = builder.Build();
 
